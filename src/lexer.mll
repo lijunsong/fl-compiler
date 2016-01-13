@@ -23,6 +23,9 @@ let keywords : (string, token) Hashtbl.t = List.enum [
   ("type", TYPE);
   ("var", VAR);
   ("while", WHILE);
+] |> Hashtbl.of_enum
+
+let punctuation : (string, token) Hashtbl.t = List.enum [
   ("(", LP);
   (")", RP);
   ("{", LBRACE);
@@ -31,6 +34,7 @@ let keywords : (string, token) Hashtbl.t = List.enum [
   ("]", RBRACKET);
   (".", DOT);
   (",", COMMA);
+  (":=", ASSIGN);
   (":", COLON);
   (";", SEMICOLON);
   ("+", PLUS);
@@ -38,19 +42,20 @@ let keywords : (string, token) Hashtbl.t = List.enum [
   ("*", TIMES);
   ("/", DIV);
   ("=", EQ);
-  ("<>", NEQ);
-  ("<", LT);
-  (">", GT);
   ("<=", LE);
   (">=", GE);
+  ("<", LT);
+  ("<>", NEQ);
+  (">", GT);
   ("&", AND);
   ("|", OR);
-  (":=", ASSIGN)
 ] |> Hashtbl.of_enum
 
 let is_keywords = Hashtbl.mem keywords
+let is_punctuation = Hashtbl.mem punctuation
 
 let token_of_keyword = Hashtbl.find keywords
+let token_of_punctuation = Hashtbl.find punctuation
 
 }
 
@@ -61,6 +66,9 @@ let digit = ['0'-'9']
 let integer_lit = digit+
 let blank = ['\t' ' ']+
 let newline = '\n'
+let punc = '(' | ')' | '{' | '}' | '[' | ']' | '.' | ',' |
+           ":=" | ':' | ';' | '+' | '-' | '*' | '/' | '=' |
+           "<=" | ">=" | '<' | "<>" | '>' | '&' | '|'
 
 (* the main entry for tokenize a program *)
 rule tokenize = parse
@@ -80,6 +88,11 @@ rule tokenize = parse
    }
  | blank { tokenize lexbuf }
  | newline { new_line lexbuf; tokenize lexbuf }
+ | punc {
+    let s = lexeme lexbuf in
+    if is_punctuation s then token_of_punctuation s
+    else failwith ("unexpected symbol: " ^ s)
+   }
  | eof
    { EOF }
  | _ {

@@ -70,6 +70,7 @@ expr:
  | BREAK { S.Break(get_pos 1 1) }
  | LET decl_list IN expr_seq END
    { S.Let(get_pos 1 1, $2, S.Seq($4)) }
+
 ;
 
 decl_list: rev_decl_list { List.rev $1 }

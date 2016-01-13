@@ -32,7 +32,7 @@ let suite =
           (S.Let(dummy,
                  [S.TypeDecl(
                       [dummy, "myint", S.NameTy(dummy, "int")])],
-                 S.Int(dummy, 1)))
+                 S.Seq([S.Int(dummy, 1)])))
     ;
       "record type declaration" >::
         assert_parse
@@ -42,7 +42,7 @@ let suite =
                                S.RecordTy([{S.fldName= "lo"; S.ty = "int"; S.pos = dummy};
                                            {S.fldName= "mid"; S.ty = "int"; S.pos = dummy};
                                            {S.fldName= "hi"; S.ty = "int"; S.pos = dummy}])])],
-                   S.Int(dummy, 1)))
+                   S.Seq([S.Int(dummy, 1)])))
     ;
 
       "record type decl [empty fields]" >::
@@ -51,15 +51,15 @@ let suite =
           (S.Let(dummy,
                 [S.TypeDecl(
                      [dummy, "myint", S.RecordTy([])])],
-                S.Int(dummy, 1)))
+                S.Seq([S.Int(dummy, 1)])))
     ;
 
       "array type declaration" >::
         assert_parse
-          "let type ary = array of int in 1"
+          "let type ary = array of int in 1 end"
           (S.Let(dummy,
                  [S.TypeDecl([dummy, "ary", S.ArrayTy(dummy, "int")])],
-                 S.Int(dummy, 1)))
+                 S.Seq([S.Int(dummy, 1)])))
     ;
 
       "variable decl" >::
@@ -67,7 +67,7 @@ let suite =
           "let var x := 12 in x end"
           (S.Let(dummy,
                  [S.VarDecl(dummy, "x", None, S.Int(dummy, 12))],
-                 S.Var(dummy, S.VarId("x"))))
+                 S.Seq([S.Var(dummy, S.VarId("x"))])))
     ;
 
       "varable decl" >::
@@ -75,7 +75,7 @@ let suite =
           "let var x : int := 12 in x end"
           (S.Let(dummy,
                  [S.VarDecl(dummy, "x", Some "int", S.Int(dummy, 12))],
-                 S.Var(dummy, S.VarId("x"))))
+                 S.Seq([S.Var(dummy, S.VarId("x"))])))
     ;
 
     ]
