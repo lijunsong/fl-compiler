@@ -8,6 +8,8 @@ let get_pos p1 p2 =
   { Pos.start_p = Parsing.rhs_start_pos p1;
     Pos.end_p = Parsing.rhs_end_pos p2 }
 
+let _ = Parsing.set_trace true
+
 %}
 
 /* token convention:
@@ -27,6 +29,15 @@ let get_pos p1 p2 =
 
 %token EOF
 
+%left LBRACKET RBRACKET LBRACE RBRACE LP RP
+%left PLUS MINUS
+%left TIMES DIV
+%nonassoc EQ NEQ LT GT LE GE
+%left AND OR
+%right ASSIGN
+
+%nonassoc UMINUS /* last one: highest precedence */
+
 %start prog
 %type <Syntax.exp> prog
 
@@ -40,7 +51,7 @@ expr:
  | Int { S.Int(get_pos 1 1, $1) }
  | NIL { S.Nil(get_pos 1 1) }
  | lvalue { S.Var(get_pos 1 1, $1)}
- | MINUS expr
+ | MINUS expr %prec UMINUS
    { S.Op(get_pos 1 1, S.OpMinus,
      S.Int(Pos.dummy, 0), $2)}
  | expr AND expr

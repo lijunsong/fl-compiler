@@ -5,7 +5,7 @@ TESTDIR = tests
 all_tests = $(shell ls $(TESTDIR)/test*)
 
 all:
-	ocamlbuild -use-ocamlfind main.byte
+	ocamlbuild -use-ocamlfind -yaccflag -v main.byte
 
 clean:
 	ocamlbuild -clean
