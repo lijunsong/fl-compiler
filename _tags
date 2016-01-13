@@ -1,0 +1,4 @@
+<src> or <tests>: include
+true: package(batteries), package(ounit), package(sexplib), package(sexplib.syntax)
+true: syntax(camlp4o)
+true: debug

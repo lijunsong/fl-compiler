@@ -78,7 +78,7 @@ rule tokenize = parse
    { let buf = BatBuffer.create 32 in
      tokenize_string lexbuf.lex_start_p buf lexbuf
    }
- | blank { Printf.printf "blank\n"; tokenize lexbuf }
+ | blank { tokenize lexbuf }
  | newline { new_line lexbuf; tokenize lexbuf }
  | eof
    { EOF }
