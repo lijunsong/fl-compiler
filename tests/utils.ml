@@ -54,10 +54,10 @@ and ast_decl_equal decl1 decl2 =
     f1.fldName = f2.fldName && f1.ty = f2.ty
   in
   let funcdecl_cmp (_, d1) (_, d2) =
-    d1.funcName = d2.funcName &&
-      d1.result = d2.result &&
-        ast_equal d1.body d2.body &&
-          List.for_all2 fldTy_cmp d1.params d2.params
+    d1.funName = d2.funName &&
+      d1.fresult = d2.fresult &&
+        ast_equal d1.fbody d2.fbody &&
+          List.for_all2 fldTy_cmp d1.fparams d2.fparams
   in
   let ty_cmp t1 t2 = match t1, t2 with
     | NameTy(_, s), NameTy(_, s') -> s = s'

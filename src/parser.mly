@@ -107,10 +107,10 @@ declation:
   | VAR Id COLON Id ASSIGN expr { S.VarDecl(get_pos 2 2, $2, Some $4, $6) }
   | FUNCTION Id LP type_fields_opt RP EQ expr
     { S.FunctionDecl([get_pos 2 2,
-                      {S.funcName=$2;S.params=$4;S.result=None;S.body=$7}])}
+                      {S.funName=$2;S.fparams=$4;S.fresult=None;S.fbody=$7}])}
   | FUNCTION Id LP type_fields_opt RP COLON Id EQ expr
     { S.FunctionDecl([get_pos 2 2,
-                      {S.funcName=$2;S.params=$4;S.result=Some $7;S.body=$9}])}
+                      {S.funName=$2;S.fparams=$4;S.fresult=Some $7;S.fbody=$9}])}
 ;
 
 type_decl:

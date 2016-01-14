@@ -46,8 +46,8 @@ type exp =
      pos: pos_t;
    }
  and funcdecl = {
-     funcName: symbol;
-     params: fieldTy list;
-     result: symbol option;
-     body: exp;
+     funName: symbol;
+     fparams: fieldTy list;
+     fresult: symbol option;
+     fbody: exp;
    } with sexp
