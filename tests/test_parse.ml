@@ -205,8 +205,11 @@ let suite =
                           S.Break(dummy)])))
     ;
 
-
-
+      "a := b + c"
+        assert_parse
+        "a := b + c"
+        (S.Assign(dummy, S.VarId("a"), S.Op(dummy, S.OpPlus, S.Var(dummy, S.VarId("b")), S.Var(dummy, S.VarId("c")))))
+    ;
 
     ]
 

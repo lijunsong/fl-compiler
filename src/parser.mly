@@ -29,12 +29,13 @@ let _ = Parsing.set_trace true
 
 %token EOF
 
+%left AND OR
 %left LBRACKET RBRACKET LBRACE RBRACE LP RP
 %left PLUS MINUS
 %left TIMES DIV
 %nonassoc EQ NEQ LT GT LE GE
-%left AND OR
 %right ASSIGN
+%left ELSE
 
 %nonassoc UMINUS /* last one: highest precedence */
 
@@ -54,12 +55,7 @@ expr:
  | MINUS expr %prec UMINUS
    { S.Op(get_pos 1 1, S.OpMinus,
      S.Int(Pos.dummy, 0), $2)}
- | expr AND expr
-   { S.If(get_pos 2 2, $1, $3, Some (S.Int(Pos.dummy, 0))) }
- | expr OR expr
-   { S.If(get_pos 2 2, $1, S.Int(Pos.dummy, 1), Some $3) }
- | expr op expr
-   { S.Op(get_pos 2 2, $2, $1, $3) }
+ | op { $1 }
  | lvalue ASSIGN expr
    { S.Assign(get_pos 1 1, $1, $3) }
  | Id LP expr_list RP
@@ -81,8 +77,23 @@ expr:
  | BREAK { S.Break(get_pos 1 1) }
  | LET decl_list IN expr_seq END
    { S.Let(get_pos 1 1, $2, S.Seq($4)) }
-
 ;
+
+op:
+ | expr AND expr
+   { S.If(get_pos 2 2, $1, $3, Some (S.Int(Pos.dummy, 0))) }
+ | expr OR expr
+   { S.If(get_pos 2 2, $1, S.Int(Pos.dummy, 1), Some $3) }
+ | expr PLUS expr { S.Op(get_pos 2 2, S.OpPlus, $1, $3) }
+ | expr MINUS expr { S.Op(get_pos 2 2, S.OpMinus, $1, $3) }
+ | expr TIMES expr { S.Op(get_pos 2 2, S.OpTimes, $1, $3) }
+ | expr DIV expr { S.Op(get_pos 2 2, S.OpDiv, $1, $3) }
+ | expr EQ expr { S.Op(get_pos 2 2, S.OpEq, $1, $3) }
+ | expr NEQ expr { S.Op(get_pos 2 2, S.OpNeq, $1, $3) }
+ | expr LT expr { S.Op(get_pos 2 2, S.OpLt, $1, $3) }
+ | expr GT expr { S.Op(get_pos 2 2, S.OpGt, $1, $3) }
+ | expr LE expr { S.Op(get_pos 2 2, S.OpLe, $1, $3) }
+ | expr GE expr { S.Op(get_pos 2 2, S.OpGe, $1, $3) }
 
 decl_list: rev_decl_list { List.rev $1 }
 ;
@@ -161,20 +172,6 @@ expr_seq:
 rev_expr_seq:
   | expr { [$1] }
   | rev_expr_seq SEMICOLON expr { $3 :: $1 }
-
-
-op:
- | PLUS { S.OpPlus }
- | MINUS { S.OpMinus }
- | TIMES { S.OpTimes }
- | DIV { S.OpDiv }
- | EQ { S.OpEq }
- | NEQ { S.OpNeq }
- | LT { S.OpLt }
- | GT { S.OpGt }
- | LE { S.OpLe }
- | GE { S.OpGe }
- /* AND and OR should be matched separately */
 
 lvalue:
  | Id { S.VarId($1) }
