@@ -32,9 +32,9 @@ let _ = Parsing.set_trace true
 %left AND OR
 %left ASSIGN
 %left LBRACKET RBRACKET LBRACE RBRACE LP RP
+%nonassoc EQ NEQ LT GT LE GE
 %left PLUS MINUS
 %left TIMES DIV
-%nonassoc EQ NEQ LT GT LE GE
 %right ELSE DO OF THEN /* shift the else */
 %left Id
 

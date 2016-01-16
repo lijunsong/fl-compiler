@@ -235,6 +235,13 @@ let suite =
           (S.Assign (dummy, S.VarSubscript(S.VarId("a"), S.Int(dummy, 0)), S.Int(dummy, 1)))
     ;
 
+      "precedence" >::
+        assert_parse
+          "1 + 2 = 1 * 2"
+          (S.Op(dummy, S.OpEq,
+                S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 2)),
+                S.Op(dummy, S.OpTimes, S.Int(dummy, 1), S.Int(dummy, 2))))
+    ;
     ]
 
 
