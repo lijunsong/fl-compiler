@@ -35,7 +35,7 @@ let _ = Parsing.set_trace true
 %left PLUS MINUS
 %left TIMES DIV
 %nonassoc EQ NEQ LT GT LE GE
-%right ELSE DO OF  /* shift the else */
+%right ELSE DO OF THEN /* shift the else */
 %left Id
 
 %nonassoc UMINUS /* last one: highest precedence */
@@ -82,8 +82,13 @@ expr:
 
 lvalue:
  | Id { S.VarId($1) }
+ | lvalue_refactor { $1 }
+;
+
+lvalue_refactor:
  | lvalue DOT Id { S.VarField($1, $3) }
- | lvalue LBRACKET expr RBRACKET { S.VarSubscript($1, $3) }
+ | Id LBRACKET expr RBRACKET { S.VarSubscript(S.VarId($1), $3) }
+ | lvalue_refactor LBRACKET expr RBRACKET { S.VarSubscript($1, $3) }
 ;
 
 op:

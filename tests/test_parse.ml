@@ -134,6 +134,15 @@ let suite =
                  S.Seq([S.Int(dummy, 1)])))
     ;
 
+      "array decl" >::
+        assert_parse
+          "let var arr1 := arrtype1 [10] of 0 in 1 end"
+          (S.Let(dummy,
+                 [S.VarDecl(dummy, "arr1", None,
+                            S.Arr(dummy, "arrtype1", S.Int(dummy, 10), S.Int(dummy, 0)))],
+                 S.Seq([S.Int(dummy, 1)])))
+    ;
+
       "let var array" >::
         assert_parse
           "let type arrtype1 = array of int
@@ -182,6 +191,13 @@ let suite =
           "1 + 1 | 2 + 2"
           (S.If(dummy, S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 1)),
                 S.Int(dummy, 1), Some (S.Op(dummy, S.OpPlus, S.Int(dummy, 2), S.Int(dummy, 2)))))
+    ;
+
+      "If" >::
+        assert_parse
+          "if 1 then if 2 then 3 else 4"
+          (S.If(dummy, S.Int(dummy, 1),
+                S.If(dummy, S.Int(dummy, 2), S.Int(dummy, 3), Some (S.Int(dummy, 4))), None))
     ;
 
       "seq" >::
