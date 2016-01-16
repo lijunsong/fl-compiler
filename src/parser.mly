@@ -30,12 +30,13 @@ let _ = Parsing.set_trace true
 %token EOF
 
 %left AND OR
+%left ASSIGN
 %left LBRACKET RBRACKET LBRACE RBRACE LP RP
 %left PLUS MINUS
 %left TIMES DIV
 %nonassoc EQ NEQ LT GT LE GE
-%right ASSIGN
-%left ELSE
+%right ELSE DO OF  /* shift the else */
+%left Id
 
 %nonassoc UMINUS /* last one: highest precedence */
 
@@ -77,6 +78,12 @@ expr:
  | BREAK { S.Break(get_pos 1 1) }
  | LET decl_list IN expr_seq END
    { S.Let(get_pos 1 1, $2, S.Seq($4)) }
+;
+
+lvalue:
+ | Id { S.VarId($1) }
+ | lvalue DOT Id { S.VarField($1, $3) }
+ | lvalue LBRACKET expr RBRACKET { S.VarSubscript($1, $3) }
 ;
 
 op:
@@ -172,9 +179,3 @@ expr_seq:
 rev_expr_seq:
   | expr { [$1] }
   | rev_expr_seq SEMICOLON expr { $3 :: $1 }
-
-lvalue:
- | Id { S.VarId($1) }
- | lvalue DOT Id { S.VarField($1, $3) }
- | lvalue LBRACKET expr RBRACKET { S.VarSubscript($1, $3) }
-;

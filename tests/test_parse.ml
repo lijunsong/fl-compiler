@@ -110,33 +110,33 @@ let suite =
 
       "nil" >::
         assert_parse
-          "let type rectype = {name:string, id:int}\
-               var b:rectype := nil\
+          "let type rectype = {name:string, id:int}
+               var b:rectype := nil
            in b := nil end"
           (S.Let(dummy, [S.TypeDecl([dummy, "rectype",
-                                     S.RecordTy([{S.fldName="name"; S.ty="int";S.pos=dummy};
-                                                 {S.fldName="id"; S.ty="int";S.pos=dummy}])])],
+                                     S.RecordTy([{S.fldName="name"; S.ty="string";S.pos=dummy};
+                                                 {S.fldName="id"; S.ty="int";S.pos=dummy}])]);
+                         S.VarDecl(dummy, "b", Some("rectype"), S.Nil(dummy))],
                  S.Seq([S.Assign(dummy, S.VarId("b"), S.Nil(dummy))])))
     ;
       "let function decl" >::
         assert_parse
-          "let function g(a:int, b:int) = (a)\
+          "let function g(a:int, b:int) = (a)
                function g1(a:int, b:int):int = (b) in 1 end"
           (S.Let(dummy,
                  [S.FunctionDecl(
-                      [dummy, {S.funName="g"; S.fresult=None; S.fbody=S.Seq([S.Var(dummy, S.VarId("a"))]);
-                               S.fparams=[{S.fldName="a"; S.ty="int"; S.pos=dummy};
-                                          {S.fldName="b"; S.ty="int"; S.pos=dummy}]}]);
-                  S.FunctionDecl(
-                      [dummy, {S.funName="g1"; S.fresult=Some "int"; S.fbody=S.Seq([S.Var(dummy, S.VarId("b"))]);
-                               S.fparams=[{S.fldName="a"; S.ty="int"; S.pos=dummy};
-                                          {S.fldName="b"; S.ty="int"; S.pos=dummy}]}])],
+                      [(dummy, {S.funName="g"; S.fresult=None; S.fbody=S.Seq([S.Var(dummy, S.VarId("a"))]);
+                                S.fparams=[{S.fldName="a"; S.ty="int"; S.pos=dummy};
+                                           {S.fldName="b"; S.ty="int"; S.pos=dummy}]});
+                       (dummy, {S.funName="g1"; S.fresult=Some "int"; S.fbody=S.Seq([S.Var(dummy, S.VarId("b"))]);
+                                S.fparams=[{S.fldName="a"; S.ty="int"; S.pos=dummy};
+                                           {S.fldName="b"; S.ty="int"; S.pos=dummy}]})])],
                  S.Seq([S.Int(dummy, 1)])))
     ;
 
       "let var array" >::
         assert_parse
-          "let arrtype1 = array of int
+          "let type arrtype1 = array of int
                var arr1 := arrtype1 [10] of 0
            in arr1[0] := 1; 1 end"
           (S.Let(dummy,
@@ -188,7 +188,8 @@ let suite =
         assert_parse
           "(1;2; ())"
           (S.Seq([S.Int(dummy, 1);
-                  S.Int(dummy, 2)]))
+                  S.Int(dummy, 2);
+                  S.Seq([])]))
     ;
 
       "call" >::
@@ -202,13 +203,20 @@ let suite =
           "while 10 >= 5 do (1 + 1; break; ())"
           (S.While(dummy, S.Op(dummy, S.OpGe, S.Int(dummy, 10), S.Int(dummy, 5)),
                    S.Seq([S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 1));
-                          S.Break(dummy)])))
+                          S.Break(dummy);
+                          S.Seq([])])))
     ;
 
-      "a := b + c"
+      "a := b + c" >::
         assert_parse
         "a := b + c"
         (S.Assign(dummy, S.VarId("a"), S.Op(dummy, S.OpPlus, S.Var(dummy, S.VarId("b")), S.Var(dummy, S.VarId("c")))))
+    ;
+
+      "lvalue and id shift/reduce" >::
+        assert_parse
+          "a[0] := 1"
+          (S.Assign (dummy, S.VarSubscript(S.VarId("a"), S.Int(dummy, 0)), S.Int(dummy, 1)))
     ;
 
     ]
