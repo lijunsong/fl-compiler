@@ -5,3 +5,5 @@ B _build/src
 B _build/tests
 PKG Batteries
 PKG OUnit
+PKG Sexplib
+EXT sexplib.syntax

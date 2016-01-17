@@ -1,11 +1,8 @@
 open Sexplib.Std
 open Sexplib.Conv
+open Symbol
 
-open Pos
-
-type id = string with sexp
-
-type symbol = string with sexp
+type symbol = Symbol.t with sexp
 
 type pos_t = Pos.t sexp_opaque with sexp
 
@@ -33,8 +30,8 @@ type exp =
    | OpPlus | OpMinus | OpTimes | OpDiv | OpEq | OpNeq
    | OpLt | OpGt | OpLe | OpGe
  and var =
-   | VarId of id (** id in lvalue *)
-   | VarField of var * id (** lvalue . id *)
+   | VarId of symbol (** symbol in lvalue *)
+   | VarField of var * symbol (** lvalue . symbol *)
    | VarSubscript of var * exp (** lvalue [ exp ] *)
  and ty =
    | NameTy of pos_t * symbol

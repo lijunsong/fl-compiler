@@ -2,7 +2,6 @@
 open Batteries
 open Parser
 open Lexing
-open Pos
 exception LexError of string * Lexing.position
 
 let keywords : (string, token) Hashtbl.t = List.enum [
