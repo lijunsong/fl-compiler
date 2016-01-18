@@ -30,9 +30,9 @@ type exp =
    | OpPlus | OpMinus | OpTimes | OpDiv | OpEq | OpNeq
    | OpLt | OpGt | OpLe | OpGe
  and var =
-   | VarId of symbol (** symbol in lvalue *)
-   | VarField of var * symbol (** lvalue . symbol *)
-   | VarSubscript of var * exp (** lvalue [ exp ] *)
+   | VarId of pos_t * symbol (** symbol in lvalue *)
+   | VarField of pos_t * var * symbol (** lvalue . symbol *)
+   | VarSubscript of pos_t * var * exp (** lvalue [ exp ] *)
  and ty =
    | NameTy of pos_t * symbol
    | RecordTy of fieldTy list
