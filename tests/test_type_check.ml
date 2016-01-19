@@ -32,7 +32,7 @@ let check_file filename =
     assert_pass s
 
 let test_files () : string list =
-  let dir = "tests/samples/" in
+  let dir = "tests/type_checker_tests/" in (** run in project root *)
   let handler = Unix.opendir dir in
   let rec read_all_files result =
     try

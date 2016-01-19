@@ -47,3 +47,13 @@ let typeEnv : typeEnv =
                   predefined SymbolTable.empty
 
 let valEnv : valEnv = SymbolTable.empty
+
+(** TODO: make SymbolTable a functor, typeEnv/valEnv submodule and
+ * debug_print automatically works. *)
+let debug_typeEnv (env : typeEnv) =
+  Printf.printf "--- typeEnv ---\n";
+  SymbolTable.debug_print t_to_string env
+
+let debug_valEnv (env : valEnv) =
+  Printf.printf "--- valEnv ---\n";
+  SymbolTable.debug_print typ_to_string env

@@ -108,20 +108,23 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
   match decls with
   | [] -> tenv, venv
   | hd :: tl ->
-     begin match hd with
-     | S.VarDecl(pos, name, decl_ty, init) ->
-        let init_t = transExp tenv venv init in
-        let declared_t =
-          begin match decl_ty with
-          | None -> init_t
-          | Some (decl_t) when get_type pos decl_t tenv = init_t -> init_t
-          | Some (decl_t) -> expect_type pos (Symbol.to_string decl_t) init_t
-          end in
-        let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
-        transDecl tenv venv' tl
-     | S.TypeDecl (lst) -> trtype_decl tenv venv lst
-     | S.FunctionDecl (lst) -> trfunc_decl tenv venv lst
-     end
+     let tenv', venv' =
+       begin match hd with
+       | S.VarDecl(pos, name, decl_ty, init) ->
+          let _ = print_endline "in VarDecl" in
+          let init_t = transExp tenv venv init in
+          let declared_t =
+            begin match decl_ty with
+            | None -> init_t
+            | Some (decl_t) when get_type pos decl_t tenv = init_t -> init_t
+            | Some (decl_t) -> expect_type pos (Symbol.to_string decl_t) init_t
+            end in
+          let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
+          tenv, venv'
+       | S.TypeDecl (lst) -> trtype_decl tenv venv lst
+       | S.FunctionDecl (lst) -> trfunc_decl tenv venv lst
+       end in
+     transDecl tenv' venv' tl
 
 and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty =
   let rec trvar (var : S.var) : expty =
@@ -260,6 +263,8 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
        end
     | S.Let (pos, decl, body) ->
        let tenv', venv' = transDecl tenv venv decl in
+       Types.debug_typeEnv tenv';
+       Types.debug_valEnv venv';
        transExp tenv' venv' body
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with

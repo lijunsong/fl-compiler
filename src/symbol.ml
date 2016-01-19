@@ -42,6 +42,7 @@ module SymbolTable : sig
   val empty : 'a t
   val enter : Symbol.t -> 'a -> 'a t -> 'a t
   val look : Symbol.t -> 'a t -> 'a option
+  val debug_print : ('a -> string) -> 'a t -> unit
 end =
   struct
     module Table = Map.Make(Symbol)
@@ -57,4 +58,8 @@ end =
       if Table.mem sym table then
         Some (Table.find sym table)
       else None
+
+    let debug_print (f : 'a -> string) table =
+      Table.iter (fun k v ->
+        Printf.printf "%s\n\t=> %s\n" (Symbol.to_string k) (f v)) table
   end
