@@ -19,7 +19,7 @@ let rec ast_equal ast1 ast2 =
   | Record(_, s, flds), Record (_, s', flds') ->
      s = s' && cmp_list2 (fun (_,s,e) (_,s',e') ->
                   s = s' && ast_equal e e') flds flds'
-  | Seq(lst), Seq(lst') ->
+  | Seq(_, lst), Seq(_, lst') ->
      cmp_list2 ast_equal lst lst'
   | If (_, tst, thn, els), If (_, tst', thn', els') ->
      ast_equal tst tst' && ast_equal thn thn' &&
@@ -41,10 +41,10 @@ let rec ast_equal ast1 ast2 =
   | _ -> false
 
 and ast_var_equal var1 var2 = match var1, var2 with
-    | VarId(id), VarId(id') -> id = id'
-    | VarField (v, id), VarField(v', id') ->
+    | VarId(_, id), VarId(_, id') -> id = id'
+    | VarField (_, v, id), VarField(_, v', id') ->
        id = id' && ast_var_equal v v'
-    | VarSubscript (v, e), VarSubscript(v', e') ->
+    | VarSubscript (_, v, e), VarSubscript(_, v', e') ->
        ast_var_equal v v' && ast_equal e e'
     | _ -> false
 

@@ -37,15 +37,6 @@ let assert_parse_fail (s : string) =
   in
   test
 
-let check_file filename =
-  let lines = List.of_enum (File.lines_of filename) in
-  let s = String.join "\n" lines in
-  let hdr = String.uppercase (List.hd lines) in
-  if String.exists hdr "ERROR" then
-    assert_parse_fail s
-  else
-    assert_parse_succ s
-
 let dummy = Pos.dummy
 
 (** Because the parsing must always produce an exp, testing declations
@@ -62,7 +53,7 @@ let suite =
           (S.Let(dummy,
                  [S.TypeDecl(
                       [dummy, to_sym "myint", S.NameTy(dummy, to_sym "int")])],
-                 S.Seq([S.Int(dummy, 1)])))
+                 S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
       "record type declaration" >::
         assert_parse
@@ -72,7 +63,7 @@ let suite =
                                S.RecordTy([{S.fldName= to_sym "lo"; S.ty = to_sym "int"; S.pos = dummy};
                                            {S.fldName= to_sym "mid"; S.ty = to_sym "int"; S.pos = dummy};
                                            {S.fldName= to_sym "hi"; S.ty = to_sym "int"; S.pos = dummy}])])],
-                   S.Seq([S.Int(dummy, 1)])))
+                   S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
 
       "record type decl [empty fields]" >::
@@ -81,7 +72,7 @@ let suite =
           (S.Let(dummy,
                 [S.TypeDecl(
                      [dummy, to_sym "myint", S.RecordTy([])])],
-                S.Seq([S.Int(dummy, 1)])))
+                S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
 
       "array type declaration" >::
@@ -89,7 +80,7 @@ let suite =
           "let type ary = array of int in 1 end"
           (S.Let(dummy,
                  [S.TypeDecl([dummy, to_sym "ary", S.ArrayTy(dummy, to_sym "int")])],
-                 S.Seq([S.Int(dummy, 1)])))
+                 S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
 
       "variable decl" >::
@@ -97,7 +88,7 @@ let suite =
           "let var x := 12 in x end"
           (S.Let(dummy,
                  [S.VarDecl(dummy, to_sym "x", None, S.Int(dummy, 12))],
-                 S.Seq([S.Var(dummy, S.VarId(to_sym "x"))])))
+                 S.Seq(dummy, [S.Var(dummy, S.VarId(dummy, to_sym "x"))])))
     ;
 
       "varable decl" >::
@@ -105,7 +96,7 @@ let suite =
           "let var x : int := 12 in x end"
           (S.Let(dummy,
                  [S.VarDecl(dummy, to_sym "x", Some (to_sym "int"), S.Int(dummy, 12))],
-                 S.Seq([S.Var(dummy, S.VarId(to_sym "x"))])))
+                 S.Seq(dummy, [S.Var(dummy, S.VarId(dummy, to_sym "x"))])))
     ;
 
       "nil" >::
@@ -117,7 +108,7 @@ let suite =
                                      S.RecordTy([{S.fldName=to_sym "name"; S.ty=to_sym "string";S.pos=dummy};
                                                  {S.fldName=to_sym "id"; S.ty=to_sym "int";S.pos=dummy}])]);
                          S.VarDecl(dummy, to_sym "b", Some(to_sym "rectype"), S.Nil(dummy))],
-                 S.Seq([S.Assign(dummy, S.VarId(to_sym "b"), S.Nil(dummy))])))
+                 S.Seq(dummy, [S.Assign(dummy, S.VarId(dummy, to_sym "b"), S.Nil(dummy))])))
     ;
       "let function decl" >::
         assert_parse
@@ -125,13 +116,13 @@ let suite =
                function g1(a:int, b:int):int = (b) in 1 end"
           (S.Let(dummy,
                  [S.FunctionDecl(
-                      [(dummy, {S.funName=to_sym "g"; S.fresult=None; S.fbody=S.Seq([S.Var(dummy, S.VarId(to_sym "a"))]);
+                      [(dummy, {S.funName=to_sym "g"; S.fresult=None; S.fbody=S.Seq(dummy, [S.Var(dummy, S.VarId(dummy, to_sym "a"))]);
                                 S.fparams=[{S.fldName=to_sym "a"; S.ty=to_sym "int"; S.pos=dummy};
                                            {S.fldName=to_sym "b"; S.ty=to_sym "int"; S.pos=dummy}]});
-                       (dummy, {S.funName=to_sym "g1"; S.fresult=Some (to_sym "int"); S.fbody=S.Seq([S.Var(dummy, S.VarId(to_sym "b"))]);
+                       (dummy, {S.funName=to_sym "g1"; S.fresult=Some (to_sym "int"); S.fbody=S.Seq(dummy, [S.Var(dummy, S.VarId(dummy, to_sym "b"))]);
                                 S.fparams=[{S.fldName=to_sym "a"; S.ty=to_sym "int"; S.pos=dummy};
                                            {S.fldName=to_sym "b"; S.ty=to_sym "int"; S.pos=dummy}]})])],
-                 S.Seq([S.Int(dummy, 1)])))
+                 S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
 
       "array decl" >::
@@ -140,7 +131,7 @@ let suite =
           (S.Let(dummy,
                  [S.VarDecl(dummy, to_sym "arr1", None,
                             S.Arr(dummy, to_sym "arrtype1", S.Int(dummy, 10), S.Int(dummy, 0)))],
-                 S.Seq([S.Int(dummy, 1)])))
+                 S.Seq(dummy, [S.Int(dummy, 1)])))
     ;
 
       "let var array" >::
@@ -152,7 +143,7 @@ let suite =
                  [S.TypeDecl([dummy, to_sym "arrtype1", S.ArrayTy(dummy, to_sym "int")]);
                   S.VarDecl(dummy, to_sym "arr1", None,
                             S.Arr(dummy, to_sym "arrtype1", S.Int(dummy, 10), S.Int(dummy, 0)))],
-                 S.Seq([S.Assign(dummy, S.VarSubscript(S.VarId(to_sym "arr1"), S.Int(dummy, 0)),
+                 S.Seq(dummy, [S.Assign(dummy, S.VarSubscript(dummy, S.VarId(dummy, to_sym "arr1"), S.Int(dummy, 0)),
                                  S.Int(dummy, 1)); S.Int(dummy, 1)])))
     ;
 
@@ -203,9 +194,9 @@ let suite =
       "seq" >::
         assert_parse
           "(1;2; ())"
-          (S.Seq([S.Int(dummy, 1);
+          (S.Seq(dummy, [S.Int(dummy, 1);
                   S.Int(dummy, 2);
-                  S.Seq([])]))
+                  S.Seq(dummy, [])]))
     ;
 
       "call" >::
@@ -218,21 +209,21 @@ let suite =
         assert_parse
           "while 10 >= 5 do (1 + 1; break; ())"
           (S.While(dummy, S.Op(dummy, S.OpGe, S.Int(dummy, 10), S.Int(dummy, 5)),
-                   S.Seq([S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 1));
+                   S.Seq(dummy, [S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 1));
                           S.Break(dummy);
-                          S.Seq([])])))
+                          S.Seq(dummy, [])])))
     ;
 
       "a := b + c" >::
         assert_parse
         "a := b + c"
-        (S.Assign(dummy, S.VarId(to_sym "a"), S.Op(dummy, S.OpPlus, S.Var(dummy, S.VarId(to_sym "b")), S.Var(dummy, S.VarId(to_sym "c")))))
+        (S.Assign(dummy, S.VarId(dummy, to_sym "a"), S.Op(dummy, S.OpPlus, S.Var(dummy, S.VarId(dummy, to_sym "b")), S.Var(dummy, S.VarId(dummy, to_sym "c")))))
     ;
 
       "lvalue and id shift/reduce" >::
         assert_parse
           "a[0] := 1"
-          (S.Assign (dummy, S.VarSubscript(S.VarId(to_sym "a"), S.Int(dummy, 0)), S.Int(dummy, 1)))
+          (S.Assign (dummy, S.VarSubscript(dummy, S.VarId(dummy, to_sym "a"), S.Int(dummy, 0)), S.Int(dummy, 1)))
     ;
 
       "precedence" >::

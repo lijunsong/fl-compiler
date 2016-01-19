@@ -8,7 +8,7 @@ let get_pos p1 p2 =
   { Pos.start_p = Parsing.rhs_start_pos p1;
     Pos.end_p = Parsing.rhs_end_pos p2 }
 
-let _ = Parsing.set_trace true
+(* let _ = Parsing.set_trace true *)
 
 let to_sym = Symbol.of_string
 %}
@@ -63,7 +63,7 @@ expr:
  | Id LP expr_list RP
    { S.Call(get_pos 1 1, to_sym $1, $3) }
  | LP expr_seq RP
-   { S.Seq $2 }
+   { S.Seq (get_pos 1 1, $2) }
  | Id LBRACE field_list RBRACE
    { S.Record(get_pos 1 1, to_sym $1, $3) }
  | Id LBRACKET expr RBRACKET OF expr
@@ -78,7 +78,7 @@ expr:
    { S.While(get_pos 1 1, $2, $4) }
  | BREAK { S.Break(get_pos 1 1) }
  | LET decl_list IN expr_seq END
-   { S.Let(get_pos 1 1, $2, S.Seq($4)) }
+   { S.Let(get_pos 1 1, $2, S.Seq(get_pos 4 4, $4)) }
 ;
 
 lvalue:

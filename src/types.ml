@@ -22,6 +22,10 @@ let t_to_string = function
   | UNIT -> "unit"
   | NAME (s, _)-> Symbol.to_string s
 
+let typ_to_string = function
+  | VarType (t) -> t_to_string t
+  | FuncType (_) -> "function"
+
 let rec record_find (lst : (Symbol.t * t) list) (sym : Symbol.t) : t option =
   match lst with
   | [] -> None
@@ -35,6 +39,11 @@ type typeEnv = t SymbolTable.t
 (** valEnv stores identifier -> type *)
 type valEnv = typ SymbolTable.t
 
-let typeEnv : typeEnv = SymbolTable.empty
+(** typeEnv includes predefined types: int string *)
+let typeEnv : typeEnv =
+  let predefined = [("int", INT); ("string", STRING)] in
+  List.fold_right (fun (s, t) table ->
+      SymbolTable.enter (Symbol.of_string s) t table)
+                  predefined SymbolTable.empty
 
 let valEnv : valEnv = SymbolTable.empty

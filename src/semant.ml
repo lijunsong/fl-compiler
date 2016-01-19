@@ -1,5 +1,7 @@
 module S = Syntax
 open Printf
+open Symbol
+open Batteries
 
 module Translate = struct
   type exp = unit
@@ -46,14 +48,23 @@ let raise_undef pos (sym : Symbol.t) =
 let expect_type pos (expect : string) (actual : Types.t) =
   raise (TypeError(pos, "Expected type " ^ expect ^ "but got " ^ (Types.t_to_string actual)))
 
-let rec transDecl (tenv : typeEnv) (venv : valEnv) (decls : S.decl list) : (typeEnv * valEnv) =
-  let trfieldTy (te : typeEnv) fld =
-    match SymbolTable.look fld.ty te with
-    | None -> raise_undef fld.pos fld.ty
-    | Some (t) -> (fld.fldName, t)
+let expect_vtype pos (expect : string) (actual : Types.typ) =
+  raise (TypeError(pos, "Expected type " ^ expect ^ "but got " ^ (Types.typ_to_string actual)))
+
+(** given a type-id (symbol), get the actual Type or issue an error *)
+let get_type pos (sym : Symbol.t) (tenv : Types.typeEnv) : Types.t =
+  match SymbolTable.look sym tenv with
+  | None -> raise_undef pos sym
+  | Some (t) -> t
+
+let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl list) : (Types.typeEnv * Types.valEnv) =
+  let trfieldTy (te : Types.typeEnv) fld =
+    match SymbolTable.look fld.S.ty te with
+    | None -> raise_undef fld.S.pos fld.S.ty
+    | Some (t) -> (fld.S.fldName, t)
   in
   (* Translate a list of TypeDecl *)
-  let rec trtype_decl tenv venv (decl : (Pos.t * Symbol.t * S.ty) list) : (typeEnv * valEnv) = match decl with
+  let rec trtype_decl tenv venv (decl : (Pos.t * Symbol.t * S.ty) list) : (Types.typeEnv * Types.valEnv) = match decl with
     | [] -> tenv, venv
     | (pos, name, ty) :: tl ->
        let ty' =
@@ -65,13 +76,13 @@ let rec transDecl (tenv : typeEnv) (venv : valEnv) (decls : S.decl list) : (type
             end
          | S.RecordTy (fld_list) ->
             let placeholder = ref None in
-            let tenv' = SymbolTable.enter name (Types.NAME(name, placeholder)) in
+            let tenv' = SymbolTable.enter name (Types.NAME(name, placeholder)) tenv in
             let rec_fields = List.map (fun fld -> trfieldTy tenv' fld) fld_list in
             let t = Types.RECORD (rec_fields) in
-            placeholder := t;
+            placeholder := Some (t);
             t
          | S.ArrayTy (pos, sym) ->
-            begin match SymolTable.look sym tenv with
+            begin match SymbolTable.look sym tenv with
             | Some (t) -> Types.ARRAY(t)
             | None -> raise_undef pos sym
             end
@@ -79,13 +90,13 @@ let rec transDecl (tenv : typeEnv) (venv : valEnv) (decls : S.decl list) : (type
        in
        trtype_decl (SymbolTable.enter name ty' tenv) venv tl
   in
-  let rec trfunc_decl tenv venv (decl : (Pos.t * S.funcdecl list)) : (typeEnv * valEnv) = match decl with
+  let rec trfunc_decl tenv venv (decl : (Pos.t * S.funcdecl) list) : (Types.typeEnv * Types.valEnv) = match decl with
     | [] -> tenv, venv
-    | (pos, {funName;fparams;fresult;fbody}) :: tl ->
-       let args_t = List.map (fun param -> trfieldTy tenv param) fparams in
+    | (pos, {S.funName;S.fparams;S.fresult;S.fbody}) :: tl ->
+       let args_t = List.map (fun (_, t) -> t) (List.map (fun param -> trfieldTy tenv param) fparams) in
        let ret_t = match fresult with
-         | None -> Type.UNIT
-         | Some (t) -> t in
+         | None -> Types.UNIT
+         | Some (t) -> get_type pos t tenv in
        let functype = Types.FuncType(args_t, ret_t) in
        let venv' = SymbolTable.enter funName functype venv in
        let body_t = transExp tenv venv' fbody in
@@ -98,47 +109,54 @@ let rec transDecl (tenv : typeEnv) (venv : valEnv) (decls : S.decl list) : (type
   | [] -> tenv, venv
   | hd :: tl ->
      begin match hd with
-     | VarDecl(pos, name, typ, init) ->
+     | S.VarDecl(pos, name, decl_ty, init) ->
         let init_t = transExp tenv venv init in
         let declared_t =
-          begin match typ with
+          begin match decl_ty with
           | None -> init_t
-          | Some (typ_t) when typ_t = init_t -> init_t
-          | Some (typ_t) -> expect_type pos (Types.t_to_string typ_t) init_t
+          | Some (decl_t) when get_type pos decl_t tenv = init_t -> init_t
+          | Some (decl_t) -> expect_type pos (Symbol.to_string decl_t) init_t
           end in
-        let venv' = SymbolTable.enter name declared_t venv in
+        let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
         transDecl tenv venv' tl
-     | TypeDecl (lst) -> trtype_decl tenv venv lst
-     | FunctionDecl (lst) -> trfunc_decl tenv venv lst
+     | S.TypeDecl (lst) -> trtype_decl tenv venv lst
+     | S.FunctionDecl (lst) -> trfunc_decl tenv venv lst
      end
 
-and transExp (tenv : typeEnv) (venv : valEnv) (expr : S.exp) : expty =
-  let rec trvar (var : S.Var) : expty =
+and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty =
+  let rec trvar (var : S.var) : expty =
     match var with
     | S.VarId (pos, sym) -> begin
-        match SymbolTable.lookup sym venv with
+        match SymbolTable.look sym venv with
         | None -> raise_undef pos sym
-        | Some (t) -> t
+        | Some (Types.VarType(t)) -> t
+        | Some (typ) -> expect_vtype pos (Symbol.to_string sym) typ
       end
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
         | Types.RECORD (lst) ->
-           try List.assoc sym lst
-           with
-             Not_found -> raise_undef pos sym
-           | t -> expect_type pos "record" t
+           begin try List.assoc sym lst
+                 with
+                   Not_found -> raise_undef pos sym
+           end
+        | t -> expect_type pos "record" t
+
       end
     | S.VarSubscript(pos, var1, e) ->
        match trvar var1 with
        | Types.ARRAY (t) ->
           begin match trexp e with
-          | INT -> t
+          | Types.INT -> t
           | t' -> expect_type pos "int" t'
           end
        | t' -> expect_type pos "array" t'
   and trexp (exp : S.exp) : expty =
     match exp with
+    | S.Int (_, _) -> Types.INT
     | S.Var (_, var) -> trvar var
+    | S.String (_) -> Types.STRING
+    | S.Nil (_) -> Types.NIL
+    | S.Break (_) -> Types.UNIT
     | S.Op (pos, op, l, r) ->
        let left_ty = trexp l in
        let right_ty = trexp r in
@@ -151,23 +169,28 @@ and transExp (tenv : typeEnv) (venv : valEnv) (expr : S.exp) : expty =
        let left_ty = trvar var in
        let right_ty = trexp e in
        if left_ty <> right_ty then
-         expect_type pos (Types.to_string left_ty) right_ty
+         expect_type pos (Types.t_to_string left_ty) right_ty
        else Types.UNIT
     | S.Call (pos, f, args) -> begin
-        let f_type = SymbolTable.lookup f venv with
+        match SymbolTable.look f venv with
         | Some (Types.VarType(_)) ->
            raise (TypeError(pos, (Symbol.to_string f) ^ " is not applicable"))
         | Some (Types.FuncType (arg_t, ret_t)) ->
-           let args_type = List.map trexp args in
-           if args_type = arg_t then ret_t
-           else
-             expect_type pos
-                         (String.join ", " List.map Types.t to_string arg_t)
-                         (String.join "," (List.map Types.t_to_string args_type))
+           let rec check_arg (expect : Types.t list) (actual : S.exp list) : unit = match expect, actual with
+             | [], [] -> ()
+             | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
+                                                             (List.length arg_t) (List.length args)))
+             | hd :: tl, hd' :: tl' ->
+                let actual_t = trexp hd' in
+                if actual_t <> hd then expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t
+                else check_arg tl tl'
+           in
+           check_arg arg_t args;
+           ret_t
         | None -> raise_undef pos f
       end
     | S.Record (pos, record, fields) ->
-       begin match SymbolTable.lookup record tenv with
+       begin match SymbolTable.look record tenv with
        | None -> raise_undef pos record
        | Some (record) -> begin
            (match record with
@@ -180,12 +203,13 @@ and transExp (tenv : typeEnv) (venv : valEnv) (expr : S.exp) : expty =
                      (* 2. see if e's type matches declared type *)
                      let e_t = trexp e in
                      if t = e_t then ()
-                     else expect_type pos (Symbol.t_to_string t) e_t
-                ) lst
+                     else expect_type pos (Types.t_to_string t) e_t
+                ) fields
            | _ -> expect_type pos "record" record);
            record
+         end
        end
-    | S.Seq (lst) ->
+    | S.Seq (_, lst) ->
        let rec trexp_list = function
          | [] -> Types.UNIT
          | hd :: [] -> trexp hd
@@ -195,60 +219,60 @@ and transExp (tenv : typeEnv) (venv : valEnv) (expr : S.exp) : expty =
     | S.If (pos, tst, thn, None) ->
        let tst_t = trexp tst in
        if tst_t <> Types.INT then
-         expect_type (get_exp_pos tst) "int" tst_t
+         expect_type (S.get_exp_pos tst) "int" tst_t
        else
          begin match trexp thn with
          | Types.UNIT -> Types.UNIT
-         | thn_t -> expect_type (get_exp_pos thn) "unit" thn_t
+         | thn_t -> expect_type (S.get_exp_pos thn) "unit" thn_t
          end
     | S.If (pos, tst, thn, Some (els)) ->
        let tst_t = trexp tst in
        if tst_t <> Types.INT then
-         expect_type (get_exp_pos tst) "int" tst_t
+         expect_type (S.get_exp_pos tst) "int" tst_t
        else
          let thn_t = trexp thn in
          let els_t = trexp els in
          if thn_t = els_t then thn_t
-         else expect_type (get_exp_pos els) (Types.t_to_string thn_t) els_t
+         else expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
     | S.While (pos, tst, body) ->
        let tst_t = trexp tst in
        if tst_t <> Types.INT then
-         expect_type (get_exp_pos tst) "int" tst_t
+         expect_type (S.get_exp_pos tst) "int" tst_t
        else let body_t = trexp body in
             if body_t <> Types.UNIT then
-              expect_type (get_exp_pos body) "unit" body_t
+              expect_type (S.get_exp_pos body) "unit" body_t
             else Types.UNIT
     | S.For (pos, v, lo, hi, body) ->
        (** For exp implicitly binds v to the type of lo/hi in the body *)
        begin match trexp lo, trexp hi with
        | Types.INT, Types.INT ->
-          let venv' = SymbolTable.enter v Types.INT venv in
+          let venv' = SymbolTable.enter v (Types.VarType(Types.INT)) venv in
           let body_t = transExp tenv venv' body in
           if body_t <> Types.UNIT then
-            expect_type (get_exp_pos body) "unit" body_t
+            expect_type (S.get_exp_pos body) "unit" body_t
           else body_t
        | lo_t, Types.INT ->
-          expect_type (get_exp_pos lo) "int" lo_t
+          expect_type (S.get_exp_pos lo) "int" lo_t
        | Types.INT, hi_t ->
-          expect_type (get_exp_pos hi) "int" lo_t
+          expect_type (S.get_exp_pos hi) "int" hi_t
        | lo_t, _ ->
-          expect_type (get_exp_pos lo) "int" lo_t
+          expect_type (S.get_exp_pos lo) "int" lo_t
        end
     | S.Let (pos, decl, body) ->
        let tenv', venv' = transDecl tenv venv decl in
        transExp tenv' venv' body
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with
-       | Some(ARRAY(t)) ->
+       | Some(Types.ARRAY(t)) ->
           let size_t = trexp size in
           if size_t <> Types.INT then
-            expect_type (get_exp_pos size) "int" size_t
+            expect_type (S.get_exp_pos size) "int" size_t
           else
             let init_t = trexp init in
             if init_t <> t then
-              expect_type (get_exp_pos init) (Types.t_to_string t) init_t
+              expect_type (S.get_exp_pos init) (Types.t_to_string t) init_t
             else
-              ARRAY(t)
+              Types.ARRAY(t)
        | Some(other_t) ->
           expect_type pos "array" other_t
        | None ->
@@ -256,3 +280,6 @@ and transExp (tenv : typeEnv) (venv : valEnv) (expr : S.exp) : expty =
        end
   in
   trexp expr
+
+let transProg (e : S.exp) : unit =
+  ignore(transExp Types.typeEnv Types.valEnv e)

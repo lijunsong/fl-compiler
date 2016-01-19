@@ -15,7 +15,7 @@ type exp =
   | Assign of pos_t * var * exp
   | Call of pos_t * symbol * exp list
   | Record of pos_t * symbol * (pos_t * symbol * exp) list (** type * fields *)
-  | Seq of exp list (** This construct does not need pos_t *)
+  | Seq of pos_t * exp list (** This construct does not need pos_t *)
   | If of pos_t * exp * exp * exp option (** if test then else *)
   | While of pos_t * exp * exp (** while test body *)
   | For of pos_t * symbol * exp * exp * exp (** var * lo * hi * body *)
@@ -48,3 +48,20 @@ type exp =
      fresult: symbol option;
      fbody: exp;
    } with sexp
+
+let get_exp_pos = function
+  | String (p, _) -> p
+  | Int (p, _) -> p
+  | Nil (p) -> p
+  | Var (p, _) -> p
+  | Op (p, _, _, _) -> p
+  | Assign (p, _, _) -> p
+  | Call (p, _, _) -> p
+  | Record (p, _, _) -> p
+  | Seq (p, _) -> p
+  | If (p, _, _, _) -> p
+  | While (p, _, _) -> p
+  | For (p, _, _, _, _) -> p
+  | Break (p) -> p
+  | Let (p, _, _) -> p
+  | Arr (p, _, _, _) -> p
