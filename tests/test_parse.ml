@@ -233,6 +233,15 @@ let suite =
                 S.Op(dummy, S.OpPlus, S.Int(dummy, 1), S.Int(dummy, 2)),
                 S.Op(dummy, S.OpTimes, S.Int(dummy, 1), S.Int(dummy, 2))))
     ;
+
+      "nil" >::
+        (assert_parse_fail
+           "* error: syntax error, nil should not be preceded by type-id.  */
+            let
+            type rectype = {name:string, id:int}
+            var a:= rectype nil
+            in a end")
+    ;
     ]
 
 
