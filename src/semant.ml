@@ -211,7 +211,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
                   | Some (t) ->
                      (* 2. see if e's type matches declared type *)
                      let e_t = trexp e in
-                     if t = e_t then ()
+                     if t = e_t || e_t = Types.NIL then ()
                      else expect_type pos (Types.t_to_string t) e_t
                 ) fields
            | _ -> expect_type pos "record" record);
