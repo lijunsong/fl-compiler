@@ -131,7 +131,12 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
           let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
           tenv, venv'
        | S.TypeDecl (lst) ->
-          let name_t = List.map (fun (_, s, _) -> s, Types.NAME(s, ref None)) lst in
+          let valid_recursive = List.filter (fun (_,_,ty) ->
+                                    match ty with
+                                    | S.RecordTy (_) -> true
+                                    | S.ArrayTy (_) -> true
+                                    | S.NameTy (_) -> false) lst in
+          let name_t = List.map (fun (_, s, _) ->s, Types.NAME(s, ref None)) valid_recursive in
           let tenv' = List.fold_right (fun (name,t) table ->
                           SymbolTable.enter name t table) name_t tenv in
           trtype_decl tenv' lst, venv

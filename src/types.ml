@@ -1,5 +1,9 @@
 open Symbol
 
+type uniq = int ref
+(** uniq is to differentiate records (and arrays) that have similar
+ * fields *)
+
 type t =
   | INT
   | STRING
