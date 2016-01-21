@@ -1,4 +1,4 @@
-/* initialize with unit and causing type mismatch in addition */
+/* Error: initialize with unit and causing type mismatch in addition */
 
 let 
 	var a := ()

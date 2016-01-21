@@ -112,15 +112,22 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
        begin match hd with
        | S.VarDecl(pos, name, decl_ty, init) ->
           let init_t = transExp tenv venv init in
-          let declared_t =
-            begin match decl_ty with
+          let declared_t = match decl_ty with
             | None ->
                if init_t = Types.NIL then
                  raise (TypeError(pos, "You must declare the type of variable " ^ (Symbol.to_string name)))
                else init_t
-            | Some (decl_t) when get_type pos decl_t tenv = init_t -> init_t
-            | Some (decl_t) -> expect_type pos (Symbol.to_string decl_t) init_t
-            end in
+            | Some (decl_t) ->
+               begin match get_type pos decl_t tenv with
+               | Types.RECORD (_) as rec_type ->
+                  if init_t <> rec_type && init_t <> Types.NIL then
+                    expect_type pos (Symbol.to_string decl_t) init_t
+                  else init_t
+               | t -> if init_t <> t then
+                       expect_type pos (Symbol.to_string decl_t) init_t
+                     else init_t
+               end
+          in
           let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
           tenv, venv'
        | S.TypeDecl (lst) ->
@@ -128,7 +135,18 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
           let tenv' = List.fold_right (fun (name,t) table ->
                           SymbolTable.enter name t table) name_t tenv in
           trtype_decl tenv' lst, venv
-       | S.FunctionDecl (lst) -> trfunc_decl tenv venv lst
+       | S.FunctionDecl (lst) ->
+          (** Construct a FuncType for each f in lst before checking functions *)
+          let func_list : (Symbol.t * Types.t list * Types.t) list =
+            List.map (fun (pos,func) ->
+                let params_t = List.map (fun p -> let _, t = trfieldTy tenv p in t) func.S.fparams in
+                let ret_t = match func.S.fresult with
+                  | None -> Types.UNIT
+                  | Some (t) -> get_type pos t tenv in
+                func.S.funName, params_t, ret_t) lst in
+          let venv' = List.fold_right (fun (name, arg, ret) table ->
+                        SymbolTable.enter name (Types.FuncType(arg, ret)) table) func_list venv in
+          trfunc_decl tenv venv' lst
        end in
      transDecl tenv' venv' tl
 
@@ -169,11 +187,21 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
     | S.Op (pos, op, l, r) ->
        let left_ty = trexp l in
        let right_ty = trexp r in
-       if left_ty == Types.INT && right_ty = Types.INT then
-         Types.INT
-       else raise (TypeError(pos, "Operator applied to non-integral types: " ^
+       begin match op with
+       | S.OpPlus | S.OpMinus | S.OpTimes | S.OpDiv | S.OpLt | S.OpGt | S.OpLe | S.OpGe ->
+          if left_ty == Types.INT && right_ty = Types.INT then
+            Types.INT
+          else
+            raise (TypeError(pos, "Operator applied to non-integral types: " ^
                                     (Types.t_to_string left_ty) ^ " and " ^
                                       (Types.t_to_string right_ty)))
+       | S.OpEq | S.OpNeq ->
+          if left_ty <> right_ty then
+            raise (TypeError(pos, "Operator applied to different types: " ^
+                                    (Types.t_to_string left_ty) ^ " and " ^
+                                      (Types.t_to_string right_ty)))
+          else left_ty
+       end
     | S.Assign (pos, var, e) ->
        let left_ty = trvar var in
        let right_ty = trexp e in
@@ -269,6 +297,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
        end
     | S.Let (pos, decl, body) ->
        let tenv', venv' = transDecl tenv venv decl in
+       Types.debug_typeEnv tenv';
        transExp tenv' venv' body
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with
