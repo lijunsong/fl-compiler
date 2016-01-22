@@ -1,14 +1,26 @@
 open Symbol
 
-type uniq = int ref
+
 (** uniq is to differentiate records (and arrays) that have similar
  * fields *)
+module Uniq : sig
+  type t
+  val uniq : unit -> t
+  val compare : t -> t -> int
+end = struct
+  type t = int
+  let next = ref 0
+  let compare = compare
+  let uniq () =
+    incr next;
+    !next
+end
 
 type t =
   | INT
   | STRING
-  | RECORD of (Symbol.t * t) list
-  | ARRAY of t
+  | RECORD of (Symbol.t * t) list * Uniq.t
+  | ARRAY of t * Uniq.t
   | NIL
   | UNIT
   | NAME of Symbol.t * t option ref

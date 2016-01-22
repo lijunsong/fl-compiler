@@ -77,11 +77,11 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
             end
          | S.RecordTy (fld_list) ->
             let rec_fields = List.map (fun fld -> trfieldTy tenv fld) fld_list in
-            let t = Types.RECORD (rec_fields) in
+            let t = Types.RECORD (rec_fields, Types.Uniq.uniq()) in
             t
          | S.ArrayTy (pos, sym) ->
             begin match SymbolTable.look sym tenv with
-            | Some (t) -> Types.ARRAY(t)
+            | Some (t) -> Types.ARRAY(t, Types.Uniq.uniq())
             | None -> raise_undef pos sym
             end
          end
@@ -104,6 +104,14 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
          expect_type pos (Types.t_to_string ret_t) body_t
        else
          trfunc_decl tenv venv' tl
+  in
+  let rec check_multi_def (lst : (Pos.t * Symbol.t) list) : unit =
+      match lst with
+      | [] -> ()
+      | (p, name) :: tl ->
+       if List.exists (fun (newp, name2) -> name = name2) tl then
+         raise (TypeError(p, "Multiple definition of " ^ (Symbol.to_string name)))
+       else check_multi_def tl
   in
   match decls with
   | [] -> tenv, venv
@@ -131,16 +139,18 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
           let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
           tenv, venv'
        | S.TypeDecl (lst) ->
+          check_multi_def (List.map (fun (p, sym, _) -> p, sym) lst);
           let valid_recursive = List.filter (fun (_,_,ty) ->
                                     match ty with
                                     | S.RecordTy (_) -> true
                                     | S.ArrayTy (_) -> true
                                     | S.NameTy (_) -> false) lst in
-          let name_t = List.map (fun (_, s, _) ->s, Types.NAME(s, ref None)) valid_recursive in
-          let tenv' = List.fold_right (fun (name,t) table ->
+          let name_t = List.map (fun (pos, s, _) ->pos, s, Types.NAME(s, ref None)) valid_recursive in
+          let tenv' = List.fold_right (fun (pos, name,t) table ->
                           SymbolTable.enter name t table) name_t tenv in
           trtype_decl tenv' lst, venv
        | S.FunctionDecl (lst) ->
+          check_multi_def (List.map (fun (p, f) -> p, f.S.funName) lst);
           (** Construct a FuncType for each f in lst before checking functions *)
           let func_list : (Symbol.t * Types.t list * Types.t) list =
             List.map (fun (pos,func) ->
@@ -150,7 +160,7 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
                   | Some (t) -> get_type pos t tenv in
                 func.S.funName, params_t, ret_t) lst in
           let venv' = List.fold_right (fun (name, arg, ret) table ->
-                        SymbolTable.enter name (Types.FuncType(arg, ret)) table) func_list venv in
+                          SymbolTable.enter name (Types.FuncType(arg, ret)) table) func_list venv in
           trfunc_decl tenv venv' lst
        end in
      transDecl tenv' venv' tl
@@ -166,7 +176,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
       end
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
-        | Types.RECORD (lst) ->
+        | Types.RECORD (lst, _) ->
            begin try List.assoc sym lst
                  with
                    Not_found -> raise_undef pos sym
@@ -176,7 +186,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
       end
     | S.VarSubscript(pos, var1, e) ->
        match trvar var1 with
-       | Types.ARRAY (t) ->
+       | Types.ARRAY (t, _) ->
           begin match trexp e with
           | Types.INT -> t
           | t' -> expect_type pos "int" t'
@@ -236,7 +246,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
        | None -> raise_undef pos record
        | Some (record) -> begin
            (match record with
-           | Types.RECORD(lst) ->
+           | Types.RECORD(lst, uniq) ->
               List.iter (fun (pos, sym, e) ->
                   (* first see if sym is in the record type. *)
                   match Types.record_find lst sym with
@@ -302,11 +312,10 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
        end
     | S.Let (pos, decl, body) ->
        let tenv', venv' = transDecl tenv venv decl in
-       Types.debug_typeEnv tenv';
        transExp tenv' venv' body
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with
-       | Some(Types.ARRAY(t)) ->
+       | Some(Types.ARRAY(t, uniq)) ->
           let size_t = trexp size in
           if size_t <> Types.INT then
             expect_type (S.get_exp_pos size) "int" size_t
@@ -315,7 +324,7 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
             if init_t <> t then
               expect_type (S.get_exp_pos init) (Types.t_to_string t) init_t
             else
-              Types.ARRAY(t)
+              Types.ARRAY(t, uniq)
        | Some(other_t) ->
           expect_type pos "array" other_t
        | None ->

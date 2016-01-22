@@ -26,7 +26,7 @@ let check_file filename =
   let lines = List.of_enum (File.lines_of filename) in
   let s = String.join "\n" lines in
   let hdr = String.uppercase (List.hd lines) in
-  if String.exists hdr "ERROR" || String.exists hdr "INVALID" then
+  if String.exists hdr "ERROR" || String.exists hdr "ILLEGAL" then
     assert_fail s
   else
     assert_pass s
