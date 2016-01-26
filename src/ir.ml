@@ -13,7 +13,7 @@ type exp =
   | ESEQ of stmt * exp (** evaluate stmt and then return the result of exp *)
  and stmt =
    | MOVE of exp * exp
-   | EXP of exp
+   | EXP of exp  (** evaluate e and discard the result *)
    | JUMP of exp * Temp.label list (** jump to exp, which has a possible location specified in the list *)
    | CJUMP of relop * exp * exp * Temp.label * Temp.label (** CJUMP(o, e1, e2, t, f), evaluate o(e1, e2), jump to t if true, f if false*)
    | SEQ of stmt * stmt
