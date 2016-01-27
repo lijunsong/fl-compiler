@@ -23,7 +23,7 @@ module Temp : sig
 end
 
 (** *)
-module Frame : sig
+module type Frame = sig
   type frame
   type access
 
