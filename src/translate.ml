@@ -1,4 +1,5 @@
 open Symbol
+open Batteries
 
 module Temp = struct
   type label = Symbol.t
@@ -32,11 +33,11 @@ module SparcFrame : Frame = struct
     | inMem of int         (** offset in the frame *)
 
   type frame = {
-      name : Symbol.t;
+      name : Temp.label;
       formals : access list;
       locals : mutable access list;
     }
-  let new_frame (name : Symbol.t) (formals : bool list) : frame =
+  let new_frame (name : Temp.label) (formals : bool list) : frame =
     { name;
       formals = List.map (fun f ->
                     if f then inMem(0) (* FIXME *)
@@ -57,4 +58,24 @@ end
 module Translate = struct
   type access = level * Frame.access
 
+  type level = { parent : level option; frame : Frame.frame }
+
+  let outermost : level = {
+      parent = None;
+      Frame.new_frame (Temp.prefixed_label ".main") []
+    }
+
+  let new_level parent label formls =
+    let fm = Frame.new_frame label (true :: formals) in
+    { Some parent; fm }
+
+  let get_formals level =
+    let fm = level.frame in
+    let fm_formals = Frame.get_formals level.frame in
+    level, fm_formals
+
+  let alloc_local level escape : access =
+    let fm = level.frame in
+    let fm_access = Frame.alloc_local fm escape in
+    level, fm_access
 end

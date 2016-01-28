@@ -43,6 +43,7 @@ module type Frame = sig
 
 end
 
+(** TODO: make translate a functor taking Frame as input module *)
 module Translate : sig
   (** Each nested function declared in Tiger's [let] is in a deeper
   level *)
