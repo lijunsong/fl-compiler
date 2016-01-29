@@ -15,16 +15,13 @@ module Temp = struct
   let label_with_prefix prefix =
     Symbol.of_string (prefix ^ (string_of_int !label_count))
 
-  let new_label () =
+  let new_label ?(prefix="L") () =
     incr label_count;
-    label_with_prefix "L"
+    label_with_prefix prefix
 
   let named_label name =
     Symbol.of_string name
 
-  let prefixed_label name =
-    incr label_count;
-    label_with_prefix name
 end
 
 module SparcFrame : Frame = struct
@@ -62,7 +59,7 @@ module Translate = struct
 
   let outermost : level = {
       parent = None;
-      Frame.new_frame (Temp.prefixed_label ".main") []
+      Frame.new_frame (Temp.new_label ~prefix:".main") []
     }
 
   let new_level parent label formls =

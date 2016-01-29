@@ -1,11 +1,8 @@
 module S = Syntax
 open Printf
 open Symbol
+open Translate
 open Batteries
-
-module Translate = struct
-  type exp = unit
-end
 
 (** Type Chcker
 
@@ -32,13 +29,18 @@ Notation:
     te |- E : INT
     ----------------------
     te |- Var(VarSubscript(var, E))
+ 7. ...
 
  **)
 
 type expty = Types.t
 
+exception InternalError of string
+(** [msg] InternalError *)
+
 exception TypeError of Pos.t * string
 (** [pos * message]: TypeError *)
+
 exception UndefinedError of Pos.t * string
 (** [pos * message]: undefined variable or field *)
 
@@ -57,7 +59,7 @@ let get_type pos (sym : Symbol.t) (tenv : Types.typeEnv) : Types.t =
   | None -> raise_undef pos sym
   | Some (t) -> t
 
-let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl list) : (Types.typeEnv * Types.valEnv) =
+let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl list) : (Types.typeEnv * Types.valEnv) =
   let trfieldTy (te : Types.typeEnv) fld =
     match SymbolTable.look fld.S.ty te with
     | None -> raise_undef fld.S.pos fld.S.ty
@@ -88,27 +90,29 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
        in
        trtype_decl (SymbolTable.enter name t' tenv) tl
   in
-  let rec trfunc_decl tenv venv (decl : (Pos.t * S.funcdecl) list) : (Types.typeEnv * Types.valEnv) = match decl with
+  let rec trfunc_decl curr_level tenv venv (decl : (Pos.t * S.funcdecl) list) : (Types.typeEnv * Types.valEnv) = match decl with
     | [] -> tenv, venv
     | (pos, {S.funName;S.fparams;S.fresult;S.fbody}) :: tl ->
-       let args_t = List.map (fun param -> trfieldTy tenv param) fparams in
-       let ret_t = match fresult with
-         | None -> Types.UNIT
-         | Some (t) -> get_type pos t tenv in
-       let functype = Types.FuncType(List.map (fun (_, t) -> t) args_t, ret_t) in
-       let venv' = SymbolTable.enter funName functype venv in (* binds func name *)
-       let venv'' = List.fold_right (fun (name,t) table -> (* binds args *)
-                       SymbolTable.enter name (Types.VarType(t)) table) args_t venv' in
-       let body_t = transExp tenv venv'' fbody in
+       (** For each function, bind its formals in its arguments *)
+       let level, args_t, ret_t = match SymbolTable.look funName venv with
+         | None -> raise (InternalError("Function is not preproecssed."))
+         | Some(Types.VarType(_)) -> raise (InternalError((Symbol.to_string funName) ^ " is not a function."))
+         | Some(Types.FuncType(lev, arg, ret)) -> lev, arg, ret
+       in
+       let args_t' : (Symbol.t * Translate.access * Types.t) list = ()
+
+       let venv' = List.fold_right (fun (name,acc, t) table -> (* binds args *)
+                       SymbolTable.enter name (Types.VarType(acc, t)) table) args_t' venv in
+       let body_t = transExp level tenv venv' fbody in
        if ret_t <> body_t then
          expect_type pos (Types.t_to_string ret_t) body_t
        else
-         trfunc_decl tenv venv' tl
+         trfunc_decl curr_level tenv venv tl
   in
   let rec check_multi_def (lst : (Pos.t * Symbol.t) list) : unit =
-      match lst with
-      | [] -> ()
-      | (p, name) :: tl ->
+    match lst with
+    | [] -> ()
+    | (p, name) :: tl ->
        if List.exists (fun (newp, name2) -> name = name2) tl then
          raise (TypeError(p, "Multiple definition of " ^ (Symbol.to_string name)))
        else check_multi_def tl
@@ -119,7 +123,8 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
      let tenv', venv' =
        begin match hd with
        | S.VarDecl(pos, name, decl_ty, init) ->
-          let init_t = transExp tenv venv init in
+          let init_t = transExp curr_level tenv venv init in
+          let acc = Translate.alloc_local curr_level true in
           let declared_t = match decl_ty with
             | None ->
                if init_t = Types.NIL then
@@ -136,7 +141,7 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
                      else init_t
                end
           in
-          let venv' = SymbolTable.enter name (Types.VarType (declared_t)) venv in
+          let venv' = SymbolTable.enter name (Types.VarType (acc, declared_t)) venv in
           tenv, venv'
        | S.TypeDecl (lst) ->
           check_multi_def (List.map (fun (p, sym, _) -> p, sym) lst);
@@ -152,20 +157,22 @@ let rec transDecl (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl l
        | S.FunctionDecl (lst) ->
           check_multi_def (List.map (fun (p, f) -> p, f.S.funName) lst);
           (** Construct a FuncType for each f in lst before checking functions *)
-          let func_list : (Symbol.t * Types.t list * Types.t) list =
+          let func_list : (Symbol.t * Translate.level * Types.t list * Types.t) list =
             List.map (fun (pos,func) ->
+                let label = Temp.new_label ~prefix:(Symbol.to_string func.S.funName) () in
+                let level = Translate.new_level curr_level label (List.map (fun _ -> true) func.S.fparams) in
                 let params_t = List.map (fun p -> let _, t = trfieldTy tenv p in t) func.S.fparams in
                 let ret_t = match func.S.fresult with
                   | None -> Types.UNIT
                   | Some (t) -> get_type pos t tenv in
-                func.S.funName, params_t, ret_t) lst in
-          let venv' = List.fold_right (fun (name, arg, ret) table ->
-                          SymbolTable.enter name (Types.FuncType(arg, ret)) table) func_list venv in
-          trfunc_decl tenv venv' lst
+                func.S.funName, level, params_t, ret_t) lst in
+          let venv' = List.fold_right (fun (name, level, arg, ret) table ->
+                          SymbolTable.enter name (Types.FuncType(level, arg, ret)) table) func_list venv in
+          trfunc_decl curr_level tenv venv' lst
        end in
      transDecl tenv' venv' tl
 
-and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty =
+and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty =
   let rec trvar (var : S.var) : expty =
     match var with
     | S.VarId (pos, sym) -> begin
@@ -246,18 +253,18 @@ and transExp (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty
        | None -> raise_undef pos record
        | Some (record) -> begin
            (match record with
-           | Types.RECORD(lst, uniq) ->
-              List.iter (fun (pos, sym, e) ->
-                  (* first see if sym is in the record type. *)
-                  match Types.record_find lst sym with
-                  | None -> raise_undef pos sym
-                  | Some (t) ->
-                     (* 2. see if e's type matches declared type *)
-                     let e_t = trexp e in
-                     if t = e_t || e_t = Types.NIL then ()
-                     else expect_type pos (Types.t_to_string t) e_t
-                ) fields
-           | _ -> expect_type pos "record" record);
+            | Types.RECORD(lst, uniq) ->
+               List.iter (fun (pos, sym, e) ->
+                   (* first see if sym is in the record type. *)
+                   match Types.record_find lst sym with
+                   | None -> raise_undef pos sym
+                   | Some (t) ->
+                      (* 2. see if e's type matches declared type *)
+                      let e_t = trexp e in
+                      if t = e_t || e_t = Types.NIL then ()
+                      else expect_type pos (Types.t_to_string t) e_t
+                 ) fields
+            | _ -> expect_type pos "record" record);
            record
          end
        end

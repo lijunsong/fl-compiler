@@ -10,7 +10,11 @@ module Temp : sig
 
   val new_temp : unit -> temp
 
-  val new_label : unit -> label
+  val temp_to_string : temp -> string
+
+  val new_label : ?prefix:string -> unit -> label
+
+  val label_to_string : label -> string
 
   (** Returns a new label whose assembly language name is the given
   string *)
@@ -58,6 +62,8 @@ module Translate : sig
   val new_level : level -> Temp.label -> bool list -> level
 
   val get_formals : level -> access list
+
+  val get_label : level -> Temp.label
 
   (** [alloc_local level escape] allocate a local variable on [level]
   with [escape] indicating whether the variable escapes. *)
