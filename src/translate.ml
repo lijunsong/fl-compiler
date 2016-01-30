@@ -60,21 +60,23 @@ module SparcFrame : Frame = struct
       formals : access list;
       mutable locals : access list;
     }
+
   let new_frame (name : Temp.label) (formals : bool list) : frame =
     { name;
-      formals = List.map (fun f ->
-                    if f then InMem(0) (* FIXME *)
+      formals = List.mapi (fun i f ->
+                    if f then InMem((-4) * i) (* FIXME *)
                     else let t = Temp.new_temp() in
                          InReg(t)) formals;
       locals = [];
     }
 
+  let count_locals = ref 0
   let get_name (fm : frame) = fm.name
   let get_formals (fm : frame) = fm.formals
 
   let alloc_local fm escape =
-    (* FIXME *)
-    let loc = InMem(0) in
+    incr count_locals;
+    let loc = InMem(4 * !count_locals) in
     fm.locals <- loc :: fm.locals;
     loc
 end
