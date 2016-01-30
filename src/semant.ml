@@ -93,16 +93,19 @@ let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : 
   let rec trfunc_decl curr_level tenv venv (decl : (Pos.t * S.funcdecl) list) : (Types.typeEnv * Types.valEnv) = match decl with
     | [] -> tenv, venv
     | (pos, {S.funName;S.fparams;S.fresult;S.fbody}) :: tl ->
-       (** For each function, bind its formals in its arguments *)
+       (** Functions must have been in the env. So, for each function,
+       fetch its level information, add its formals to a new env and
+       continue translate body *)
        let level, args_t, ret_t = match SymbolTable.look funName venv with
          | None -> raise (InternalError("Function is not preproecssed."))
          | Some(Types.VarType(_)) -> raise (InternalError((Symbol.to_string funName) ^ " is not a function."))
          | Some(Types.FuncType(lev, arg, ret)) -> lev, arg, ret
        in
-       let args_t' : (Symbol.t * Translate.access * Types.t) list = ()
-
-       let venv' = List.fold_right (fun (name,acc, t) table -> (* binds args *)
-                       SymbolTable.enter name (Types.VarType(acc, t)) table) args_t' venv in
+       let args_access : (Translate.access * Types.t) list =
+         List.combine (Translate.get_formals level) args_t in
+       let args_sym : Symbol.t list = List.map (fun p -> p.S.fldName) fparams in
+       let venv' = List.fold_right2 (fun name (acc, t) table -> (* binds args *)
+                       SymbolTable.enter name (Types.VarType(acc, t)) table) args_sym args_access venv in
        let body_t = transExp level tenv venv' fbody in
        if ret_t <> body_t then
          expect_type pos (Types.t_to_string ret_t) body_t
@@ -170,7 +173,7 @@ let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : 
                           SymbolTable.enter name (Types.FuncType(level, arg, ret)) table) func_list venv in
           trfunc_decl curr_level tenv venv' lst
        end in
-     transDecl tenv' venv' tl
+     transDecl curr_level tenv' venv' tl
 
 and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types.valEnv) (expr : S.exp) : expty =
   let rec trvar (var : S.var) : expty =
@@ -178,8 +181,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     | S.VarId (pos, sym) -> begin
         match SymbolTable.look sym venv with
         | None -> raise_undef pos sym
-        | Some (Types.VarType(t)) -> t
-        | Some (typ) -> expect_vtype pos (Symbol.to_string sym) typ
+        | Some (Types.VarType(acc, t)) -> t
+        | Some (typ) -> expect_vtype pos "non-function" typ
       end
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
@@ -234,7 +237,7 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
         match SymbolTable.look f venv with
         | Some (Types.VarType(_)) ->
            raise (TypeError(pos, (Symbol.to_string f) ^ " is not applicable"))
-        | Some (Types.FuncType (arg_t, ret_t)) ->
+        | Some (Types.FuncType (level, arg_t, ret_t)) ->
            let rec check_arg (expect : Types.t list) (actual : S.exp list) : unit = match expect, actual with
              | [], [] -> ()
              | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
@@ -305,8 +308,9 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        (** For exp implicitly binds v to the type of lo/hi in the body *)
        begin match trexp lo, trexp hi with
        | Types.INT, Types.INT ->
-          let venv' = SymbolTable.enter v (Types.VarType(Types.INT)) venv in
-          let body_t = transExp tenv venv' body in
+          let acc = Translate.alloc_local curr_level true in
+          let venv' = SymbolTable.enter v (Types.VarType(acc, Types.INT)) venv in
+          let body_t = transExp curr_level tenv venv' body in
           if body_t <> Types.UNIT then
             expect_type (S.get_exp_pos body) "unit" body_t
           else body_t
@@ -318,8 +322,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
           expect_type (S.get_exp_pos lo) "int" lo_t
        end
     | S.Let (pos, decl, body) ->
-       let tenv', venv' = transDecl tenv venv decl in
-       transExp tenv' venv' body
+       let tenv', venv' = transDecl curr_level tenv venv decl in
+       transExp curr_level tenv' venv' body
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with
        | Some(Types.ARRAY(t, uniq)) ->
@@ -341,4 +345,4 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
   trexp expr
 
 let transProg (e : S.exp) : unit =
-  ignore(transExp Types.typeEnv Types.valEnv e)
+  ignore(transExp Translate.outermost Types.typeEnv Types.valEnv e)
