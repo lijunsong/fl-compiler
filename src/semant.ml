@@ -1,7 +1,6 @@
 module S = Syntax
 open Printf
 open Symbol
-open Translate
 open Batteries
 
 (** Type Chcker
@@ -33,7 +32,7 @@ Notation:
 
  **)
 
-type expty = Types.t
+type expty = Translate.exp * Types.t
 
 exception InternalError of string
 (** [msg] InternalError *)
@@ -106,7 +105,7 @@ let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : 
        let args_sym : Symbol.t list = List.map (fun p -> p.S.fldName) fparams in
        let venv' = List.fold_right2 (fun name (acc, t) table -> (* binds args *)
                        SymbolTable.enter name (Types.VarType(acc, t)) table) args_sym args_access venv in
-       let body_t = transExp level tenv venv' fbody in
+       let body_ir, body_t = transExp level tenv venv' fbody in
        if ret_t <> body_t then
          expect_type pos (Types.t_to_string ret_t) body_t
        else
@@ -126,7 +125,7 @@ let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : 
      let tenv', venv' =
        begin match hd with
        | S.VarDecl(pos, name, decl_ty, init) ->
-          let init_t = transExp curr_level tenv venv init in
+          let init_ir, init_t = transExp curr_level tenv venv init in
           let acc = Translate.alloc_local curr_level true in
           let declared_t = match decl_ty with
             | None ->
@@ -181,17 +180,17 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     | S.VarId (pos, sym) -> begin
         match SymbolTable.look sym venv with
         | None -> raise_undef pos sym
-        | Some (Types.VarType(acc, t)) -> t
+        | Some (Types.VarType(acc, t)) -> Translate.dummy_exp, t
         | Some (typ) -> expect_vtype pos "non-function" typ
       end
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
-        | Types.RECORD (lst, _) ->
+        | _, Types.RECORD (lst, _) ->
            begin try List.assoc sym lst
                  with
                    Not_found -> raise_undef pos sym
            end
-        | t -> expect_type pos "record" t
+        | _, t -> expect_type pos "record" t
 
       end
     | S.VarSubscript(pos, var1, e) ->

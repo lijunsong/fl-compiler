@@ -1,35 +1,6 @@
 open Symbol
 open Batteries
 
-module Temp = struct
-  type label = Symbol.t
-  type temp = int
-
-  let temp_count = ref 0
-  let label_count = ref 0
-
-  let new_temp () =
-    incr temp_count;
-    !temp_count
-
-  let temp_to_string (tmp : temp) =
-      "tmp" ^ (string_of_int tmp)
-
-  let label_with_prefix prefix =
-    Symbol.of_string (prefix ^ (string_of_int !label_count))
-
-  let label_to_string label =
-    Symbol.to_string label
-
-  let new_label ?(prefix="L") () =
-    incr label_count;
-    label_with_prefix prefix
-
-  let named_label name =
-    Symbol.of_string name
-
-end
-
 module type Frame = sig
   type frame
   type access
@@ -83,34 +54,71 @@ end
 
 module F = SparcFrame
 
-module Translate = struct
+type level = { parent : level option; frame : F.frame }
 
-  type level = { parent : level option; frame : F.frame }
+type access = level * F.access
 
-  type access = level * F.access
+type exp =
+  | Ex of Ir.exp
+  | Nx of Ir.stmt
+  | Cx of Temp.label -> Temp.label -> Ir.stmt
 
-  let outermost = { parent = None;
-                    frame = F.new_frame (Temp.new_label ~prefix:".main" ()) [];
-    }
+let const (i : int) = Ir.CONST(i)
+let dummy_exp = Ex (const 0)
 
-  let new_level parent label formals =
-    let fm = F.new_frame label (true :: formals) in
-    { parent = Some parent; frame = fm }
+let make_true_label () = Temp.new_label ~prefix:"true" ()
+let make_false_label () = Temp.new_label ~prefix:"false" ()
 
-  (** get_formals will return the formal arguments of a
+(** To use an IR as an Ex, call this function *)
+let unEx (exp : exp) : Ir.exp = match exp with
+  | Ex (e) -> e
+  | Nx (stmt) -> failwith "unEx(Nx)"
+  | Cx (genjump) ->
+     let label_t  = Temp.new_label ~prefix:"true" () in
+     let label_f = Temp.new_label ~prefix:"false" () in
+     let res = Temp.new_temp() in
+     Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, const 1),
+                    Ir.SEQ(genjump label_t label_f,
+                           Ir.SEQ(Ir.LABEL(label_f),
+                                  Ir.MOVE(res, const 0)),
+                           Ir.LABEL(label_t))),
+             Ir.TEMP(res))
+
+(** To use an IR as an Nx, call this function *)
+let unNx : Ir.stmt = function
+  | Nx (stmt) -> stmt
+  | Ex (e) -> Ir.EXP(e)
+  | Cx (genjump) ->
+     let label_t, label_f = make_true_label(), make_false_label() in
+     genjump label_t labelf
+
+(** To use an IR as an Cx, call this function *)
+let unCx : Temp.label -> Temp.label -> Ir.stmt = function
+  | Cx (genjump) -> genjump
+  | Ex (e) -> failwith "NYI unCx"
+  | Nx (e) -> failwith "unreachable"
+
+let outermost = { parent = None;
+                  frame = F.new_frame (Temp.new_label ~prefix:"main" ()) [];
+                }
+
+let new_level parent label formals =
+  let fm = F.new_frame label (true :: formals) in
+  { parent = Some parent; frame = fm }
+
+(** get_formals will return the formal arguments of a
   function. (static link is implemented as an argument but not
   included.)*)
-  let get_formals level : access list =
-    let fm_formals = F.get_formals level.frame in
-    match List.map (fun f -> level, f) fm_formals with
-    | [] -> failwith "A level's formals cannot be empty list"
-    | hd :: tl -> tl
+let get_formals level : access list =
+  let fm_formals = F.get_formals level.frame in
+  match List.map (fun f -> level, f) fm_formals with
+  | [] -> failwith "A level's formals cannot be empty list"
+  | hd :: tl -> tl
 
-  let get_label level =
-    F.get_name level.frame
+let get_label level =
+  F.get_name level.frame
 
-  let alloc_local level escape : access =
-    let fm = level.frame in
-    let fm_access = F.alloc_local fm escape in
-    level, fm_access
-end
+let alloc_local level escape : access =
+  let fm = level.frame in
+  let fm_access = F.alloc_local fm escape in
+  level, fm_access

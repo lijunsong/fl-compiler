@@ -1,0 +1,20 @@
+(** Temp are abstract names for local variables *)
+
+(** abstract names for static memory location *)
+type label
+
+(** a value temporarly held in registers, which we assumed to be
+  infinite *)
+type temp
+
+val new_temp : unit -> temp
+
+val temp_to_string : temp -> string
+
+val new_label : ?prefix:string -> unit -> label
+
+val label_to_string : label -> string
+
+(** Returns a new label whose assembly language name is the given
+  string *)
+val named_label : string -> label

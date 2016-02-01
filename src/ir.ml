@@ -1,8 +1,6 @@
 (** This module defines the Intermediate Representation of the tiger
  * compiler. *)
 
-open FrameStack
-
 type exp =
   | CONST of int
   | NAME of Temp.label
