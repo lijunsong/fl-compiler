@@ -61,7 +61,7 @@ type access = level * F.access
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
-  | Cx of Temp.label -> Temp.label -> Ir.stmt
+  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
 let const (i : int) = Ir.CONST(i)
 let dummy_exp = Ex (const 0)
@@ -76,24 +76,24 @@ let unEx (exp : exp) : Ir.exp = match exp with
   | Cx (genjump) ->
      let label_t  = Temp.new_label ~prefix:"true" () in
      let label_f = Temp.new_label ~prefix:"false" () in
-     let res = Temp.new_temp() in
+     let res = Ir.TEMP (Temp.new_temp()) in
      Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, const 1),
                     Ir.SEQ(genjump label_t label_f,
                            Ir.SEQ(Ir.LABEL(label_f),
-                                  Ir.MOVE(res, const 0)),
-                           Ir.LABEL(label_t))),
-             Ir.TEMP(res))
+                                  Ir.SEQ(Ir.MOVE(res, const 0),
+                                         Ir.LABEL(label_t))))),
+             res)
 
 (** To use an IR as an Nx, call this function *)
-let unNx : Ir.stmt = function
+let unNx = function
   | Nx (stmt) -> stmt
   | Ex (e) -> Ir.EXP(e)
   | Cx (genjump) ->
      let label_t, label_f = make_true_label(), make_false_label() in
-     genjump label_t labelf
+     genjump label_t label_f
 
-(** To use an IR as an Cx, call this function *)
-let unCx : Temp.label -> Temp.label -> Ir.stmt = function
+(** To use an IR as a Cx, call this function *)
+let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Cx (genjump) -> genjump
   | Ex (e) -> failwith "NYI unCx"
   | Nx (e) -> failwith "unreachable"

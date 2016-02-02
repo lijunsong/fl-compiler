@@ -186,7 +186,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
         | _, Types.RECORD (lst, _) ->
-           begin try List.assoc sym lst
+           begin try
+               Translate.dummy_exp, List.assoc sym lst
                  with
                    Not_found -> raise_undef pos sym
            end
@@ -195,26 +196,26 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
       end
     | S.VarSubscript(pos, var1, e) ->
        match trvar var1 with
-       | Types.ARRAY (t, _) ->
+       | var_ir, Types.ARRAY (t, _) ->
           begin match trexp e with
-          | Types.INT -> t
-          | t' -> expect_type pos "int" t'
+          | e_ir, Types.INT -> Translate.dummy_exp, t
+          | _, t' -> expect_type pos "int" t'
           end
-       | t' -> expect_type pos "array" t'
+       | _, t' -> expect_type pos "array" t'
   and trexp (exp : S.exp) : expty =
     match exp with
-    | S.Int (_, _) -> Types.INT
+    | S.Int (_, i) -> Translate.dummy_exp, Types.INT
     | S.Var (_, var) -> trvar var
-    | S.String (_) -> Types.STRING
-    | S.Nil (_) -> Types.NIL
-    | S.Break (_) -> Types.UNIT
+    | S.String (_) -> Translate.dummy_exp, Types.STRING
+    | S.Nil (_) -> Translate.dummy_exp, Types.NIL
+    | S.Break (_) -> Translate.dummy_exp, Types.UNIT
     | S.Op (pos, op, l, r) ->
-       let left_ty = trexp l in
-       let right_ty = trexp r in
+       let l_ir, left_ty = trexp l in
+       let r_ir, right_ty = trexp r in
        begin match op with
        | S.OpPlus | S.OpMinus | S.OpTimes | S.OpDiv | S.OpLt | S.OpGt | S.OpLe | S.OpGe ->
           if left_ty == Types.INT && right_ty = Types.INT then
-            Types.INT
+            Translate.dummy_exp, Types.INT
           else
             raise (TypeError(pos, "Operator applied to non-integral types: " ^
                                     (Types.t_to_string left_ty) ^ " and " ^
@@ -224,14 +225,14 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
             raise (TypeError(pos, "Operator applied to different types: " ^
                                     (Types.t_to_string left_ty) ^ " and " ^
                                       (Types.t_to_string right_ty)))
-          else left_ty
+          else Translate.dummy_exp, left_ty
        end
     | S.Assign (pos, var, e) ->
-       let left_ty = trvar var in
-       let right_ty = trexp e in
+       let lhs_ir, left_ty = trvar var in
+       let rhs_ir, right_ty = trexp e in
        if left_ty <> right_ty then
          expect_type pos (Types.t_to_string left_ty) right_ty
-       else Types.UNIT
+       else Translate.dummy_exp, Types.UNIT
     | S.Call (pos, f, args) -> begin
         match SymbolTable.look f venv with
         | Some (Types.VarType(_)) ->
@@ -242,12 +243,13 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
              | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
                                                              (List.length arg_t) (List.length args)))
              | hd :: tl, hd' :: tl' ->
-                let actual_t = trexp hd' in
-                if actual_t <> hd then expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t
+                let actual_ir, actual_t = trexp hd' in
+                if actual_t <> hd then
+                  expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t
                 else check_arg tl tl'
            in
            check_arg arg_t args;
-           ret_t
+           Translate.dummy_exp, ret_t
         | None -> raise_undef pos f
       end
     | S.Record (pos, record, fields) ->
@@ -262,62 +264,62 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
                    | None -> raise_undef pos sym
                    | Some (t) ->
                       (* 2. see if e's type matches declared type *)
-                      let e_t = trexp e in
+                      let e_ir, e_t = trexp e in
                       if t = e_t || e_t = Types.NIL then ()
                       else expect_type pos (Types.t_to_string t) e_t
                  ) fields
             | _ -> expect_type pos "record" record);
-           record
+           Translate.dummy_exp, record
          end
        end
     | S.Seq (_, lst) ->
        let rec trexp_list = function
          | [] -> Types.UNIT
-         | hd :: [] -> trexp hd
+         | hd :: [] -> let _, t = trexp hd in t
          | hd :: tl -> ignore(trexp hd); trexp_list tl
        in
-       trexp_list lst
+       Translate.dummy_exp, trexp_list lst
     | S.If (pos, tst, thn, None) ->
-       let tst_t = trexp tst in
+       let tst_ir, tst_t = trexp tst in
        if tst_t <> Types.INT then
          expect_type (S.get_exp_pos tst) "int" tst_t
        else
          begin match trexp thn with
-         | Types.UNIT -> Types.UNIT
-         | thn_t -> expect_type (S.get_exp_pos thn) "unit" thn_t
+         | thn_ir, Types.UNIT -> Translate.dummy_exp, Types.UNIT
+         | _, thn_t -> expect_type (S.get_exp_pos thn) "unit" thn_t
          end
     | S.If (pos, tst, thn, Some (els)) ->
-       let tst_t = trexp tst in
+       let tst_ir, tst_t = trexp tst in
        if tst_t <> Types.INT then
          expect_type (S.get_exp_pos tst) "int" tst_t
        else
-         let thn_t = trexp thn in
-         let els_t = trexp els in
-         if thn_t = els_t then thn_t
+         let thn_ir, thn_t = trexp thn in
+         let els_ir, els_t = trexp els in
+         if thn_t = els_t then Translate.dummy_exp, thn_t
          else expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
     | S.While (pos, tst, body) ->
-       let tst_t = trexp tst in
+       let tst_ir, tst_t = trexp tst in
        if tst_t <> Types.INT then
          expect_type (S.get_exp_pos tst) "int" tst_t
-       else let body_t = trexp body in
+       else let body_ir, body_t = trexp body in
             if body_t <> Types.UNIT then
               expect_type (S.get_exp_pos body) "unit" body_t
-            else Types.UNIT
+            else Translate.dummy_exp, Types.UNIT
     | S.For (pos, v, lo, hi, body) ->
        (** For exp implicitly binds v to the type of lo/hi in the body *)
        begin match trexp lo, trexp hi with
-       | Types.INT, Types.INT ->
+       | (lo_ir, Types.INT), (hi_ir, Types.INT) ->
           let acc = Translate.alloc_local curr_level true in
           let venv' = SymbolTable.enter v (Types.VarType(acc, Types.INT)) venv in
-          let body_t = transExp curr_level tenv venv' body in
+          let body_ir, body_t = transExp curr_level tenv venv' body in
           if body_t <> Types.UNIT then
             expect_type (S.get_exp_pos body) "unit" body_t
-          else body_t
-       | lo_t, Types.INT ->
+          else Translate.dummy_exp, body_t
+       | (_, lo_t), (_, Types.INT) ->
           expect_type (S.get_exp_pos lo) "int" lo_t
-       | Types.INT, hi_t ->
+       | (_, Types.INT), (_, hi_t) ->
           expect_type (S.get_exp_pos hi) "int" hi_t
-       | lo_t, _ ->
+       | (_, lo_t), _ ->
           expect_type (S.get_exp_pos lo) "int" lo_t
        end
     | S.Let (pos, decl, body) ->
@@ -326,15 +328,15 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     | S.Arr (pos, typ, size, init) ->
        begin match SymbolTable.look typ tenv with
        | Some(Types.ARRAY(t, uniq)) ->
-          let size_t = trexp size in
+          let size_ir, size_t = trexp size in
           if size_t <> Types.INT then
             expect_type (S.get_exp_pos size) "int" size_t
           else
-            let init_t = trexp init in
+            let init_ir, init_t = trexp init in
             if init_t <> t then
               expect_type (S.get_exp_pos init) (Types.t_to_string t) init_t
             else
-              Types.ARRAY(t, uniq)
+              Translate.dummy_exp, Types.ARRAY(t, uniq)
        | Some(other_t) ->
           expect_type pos "array" other_t
        | None ->
