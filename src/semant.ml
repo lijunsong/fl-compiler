@@ -204,7 +204,7 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        | _, t' -> expect_type pos "array" t'
   and trexp (exp : S.exp) : expty =
     match exp with
-    | S.Int (_, i) -> Translate.dummy_exp, Types.INT
+    | S.Int (_, i) -> Translate.const i, Types.INT
     | S.Var (_, var) -> trvar var
     | S.String (_) -> Translate.dummy_exp, Types.STRING
     | S.Nil (_) -> Translate.dummy_exp, Types.NIL

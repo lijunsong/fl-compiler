@@ -1,6 +1,8 @@
 open Symbol
 open Batteries
 
+module Uniq = Types.Uniq
+
 module type Frame = sig
   type frame
   type access
@@ -19,6 +21,11 @@ module type Frame = sig
   [escape] indicating whether the variable escapes *)
   val alloc_local : frame -> bool -> access
 
+  val fp : Temp.temp ref
+
+  (** [get_exp base access] given the base location of the access,
+  this function returns the IR representing that location's content *)
+  val get_exp : Ir.exp -> access -> Ir.exp
 end
 
 module SparcFrame : Frame = struct
@@ -50,37 +57,49 @@ module SparcFrame : Frame = struct
     let loc = InMem(4 * !count_locals) in
     fm.locals <- loc :: fm.locals;
     loc
+
+  let fp = ref (Temp.new_temp())
+
+  let get_exp base acc : Ir.exp = match acc with
+    | InReg(temp) -> Ir.TEMP(temp)
+    | InMem(offset) ->
+       Ir.MEM(Ir.BINOP(Ir.PLUS, base, Ir.CONST(offset)))
+
 end
 
 module F = SparcFrame
 
-type level = { parent : level option; frame : F.frame }
+type level = { parent : level option; frame : F.frame; uniq : Uniq.t }
+(** level is a wrapper of Frame with additional _static_ scope
+ * information *)
 
 type access = level * F.access
+(** access is a wrapper to Frame.access with additional level
+ * information *)
 
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-let const (i : int) = Ir.CONST(i)
-let dummy_exp = Ex (const 0)
+let dummy_exp = Ex (Ir.CONST(0))
+
+let same_level l1 l2 = l1.uniq = l2.uniq
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
-
 (** To use an IR as an Ex, call this function *)
 let unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
   | Nx (stmt) -> failwith "unEx(Nx)"
   | Cx (genjump) ->
-     let label_t  = Temp.new_label ~prefix:"true" () in
-     let label_f = Temp.new_label ~prefix:"false" () in
+     let label_t  = make_true_label () in
+     let label_f =  make_false_label () in
      let res = Ir.TEMP (Temp.new_temp()) in
-     Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, const 1),
+     Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, Ir.CONST(1)),
                     Ir.SEQ(genjump label_t label_f,
                            Ir.SEQ(Ir.LABEL(label_f),
-                                  Ir.SEQ(Ir.MOVE(res, const 0),
+                                  Ir.SEQ(Ir.MOVE(res, Ir.CONST(0)),
                                          Ir.LABEL(label_t))))),
              res)
 
@@ -100,11 +119,12 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
 
 let outermost = { parent = None;
                   frame = F.new_frame (Temp.new_label ~prefix:"main" ()) [];
+                  uniq = Uniq.uniq ()
                 }
 
 let new_level parent label formals =
   let fm = F.new_frame label (true :: formals) in
-  { parent = Some parent; frame = fm }
+  { parent = Some parent; frame = fm; uniq = Uniq.uniq() }
 
 (** get_formals will return the formal arguments of a
   function. (static link is implemented as an argument but not
@@ -122,3 +142,15 @@ let alloc_local level escape : access =
   let fm = level.frame in
   let fm_access = F.alloc_local fm escape in
   level, fm_access
+
+(** The following functions provides interface to create [exp] from
+    source language *)
+
+let const (i : int) : exp = Ex(Ir.CONST(i))
+
+let ident (acc : access) (cur_level : level) : exp =
+  let def_level, fm_acc = acc in
+  if same_level cur_level def_level then
+    match fm_acc with
+    | InMem (offset) ->
+       F.get_base cur_level.frame

@@ -32,3 +32,10 @@ val get_label : level -> Temp.label
 (** [alloc_local level escape] allocate a local variable on [level]
   with [escape] indicating whether the variable escapes. *)
 val alloc_local : level -> bool -> access
+
+(** The following functions provides interface to create [exp] from
+    source language *)
+
+val const : int -> exp
+
+val
