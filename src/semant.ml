@@ -130,7 +130,8 @@ let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : 
           let declared_t = match decl_ty with
             | None ->
                if init_t = Types.NIL then
-                 raise (TypeError(pos, "You must declare the type of variable " ^ (Symbol.to_string name)))
+                 raise (TypeError(pos, "You must declare the type of variable "
+                                       ^ (Symbol.to_string name)))
                else init_t
             | Some (decl_t) ->
                begin match get_type pos decl_t tenv with
@@ -188,8 +189,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
         | _, Types.RECORD (lst, _) ->
            begin try
                Translate.dummy_exp, List.assoc sym lst
-                 with
-                   Not_found -> raise_undef pos sym
+             with
+               Not_found -> raise_undef pos sym
            end
         | _, t -> expect_type pos "record" t
 

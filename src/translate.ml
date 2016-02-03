@@ -1,8 +1,6 @@
 open Symbol
 open Batteries
 
-module Uniq = Types.Uniq
-
 module type Frame = sig
   type frame
   type access
@@ -60,16 +58,17 @@ module SparcFrame : Frame = struct
 
   let fp = ref (Temp.new_temp())
 
-  let get_exp base acc : Ir.exp = match acc with
+  (** Given an expression for the base of an frame and given the
+  access of that frame, return an expression for the memory. *)
+  let get_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc with
     | InReg(temp) -> Ir.TEMP(temp)
     | InMem(offset) ->
-       Ir.MEM(Ir.BINOP(Ir.PLUS, base, Ir.CONST(offset)))
-
+       Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
 end
 
 module F = SparcFrame
 
-type level = { parent : level option; frame : F.frame; uniq : Uniq.t }
+type level = { parent : level option; frame : F.frame; cmp : int }
 (** level is a wrapper of Frame with additional _static_ scope
  * information *)
 
@@ -82,9 +81,12 @@ type exp =
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-let dummy_exp = Ex (Ir.CONST(0))
+let compare (a : level) (b : level) = compare a.cmp b.cmp
 
-let same_level l1 l2 = l1.uniq = l2.uniq
+(** uniq is for compare levels *)
+let uniq = ref 0
+
+let dummy_exp = Ex (Ir.CONST(0))
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
@@ -119,12 +121,13 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
 
 let outermost = { parent = None;
                   frame = F.new_frame (Temp.new_label ~prefix:"main" ()) [];
-                  uniq = Uniq.uniq ()
+                  cmp = !uniq
                 }
 
 let new_level parent label formals =
   let fm = F.new_frame label (true :: formals) in
-  { parent = Some parent; frame = fm; uniq = Uniq.uniq() }
+  incr uniq;
+  { parent = Some parent; frame = fm; cmp = !uniq }
 
 (** get_formals will return the formal arguments of a
   function. (static link is implemented as an argument but not
@@ -143,14 +146,27 @@ let alloc_local level escape : access =
   let fm_access = F.alloc_local fm escape in
   level, fm_access
 
+let get_static_link level : F.access =
+  let fm_formals = F.get_formals level.frame in
+  List.hd fm_formals
+
 (** The following functions provides interface to create [exp] from
     source language *)
 
 let const (i : int) : exp = Ex(Ir.CONST(i))
 
-let ident (acc : access) (cur_level : level) : exp =
+let rec ident (acc : access) (use_level : level) : exp =
   let def_level, fm_acc = acc in
-  if same_level cur_level def_level then
-    match fm_acc with
-    | InMem (offset) ->
-       F.get_base cur_level.frame
+  if use_level = def_level then
+    let ir = F.get_exp (Ir.TEMP(!F.fp)) fm_acc in
+    Ex(ir)
+  else
+    (* get static link *)
+    let sl : F.access = get_static_link use_level in
+    (* follow up to find the def_level *)
+    match use_level.parent with
+    | None -> failwith "Undefined Variable. Type Checker has bugs."
+    | Some (parent) ->
+       let follow_up = unEx(ident acc parent) in
+       let ir = F.get_exp follow_up sl in
+       Ex(ir)

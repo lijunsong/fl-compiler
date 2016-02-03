@@ -37,5 +37,3 @@ val alloc_local : level -> bool -> access
     source language *)
 
 val const : int -> exp
-
-val

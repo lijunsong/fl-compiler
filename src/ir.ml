@@ -22,6 +22,3 @@ type exp =
  and relop =
    | EQ | NE | LT | GT | LE | GE
    | ULT | ULE | UGT | UGE
-
-let (+) (e1 : exp) (e2 : exp) = BINOP(PLUS, e1, e2)
-let (-) (e1 : exp) (e2 : exp) = BINOP(MINUS, e1, e2)
