@@ -86,7 +86,7 @@ let compare (a : level) (b : level) = compare a.cmp b.cmp
 (** uniq is for compare levels *)
 let uniq = ref 0
 
-let dummy_exp = Ex (Ir.CONST(0))
+(*let dummy_exp = Ex (Ir.CONST(0))*)
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
@@ -155,7 +155,7 @@ let get_static_link level : F.access =
 
 let const (i : int) : exp = Ex(Ir.CONST(i))
 
-let rec ident (acc : access) (use_level : level) : exp =
+let rec simple_var (acc : access) (use_level : level) : exp =
   let def_level, fm_acc = acc in
   if use_level = def_level then
     let ir = F.get_exp (Ir.TEMP(!F.fp)) fm_acc in
@@ -167,6 +167,6 @@ let rec ident (acc : access) (use_level : level) : exp =
     match use_level.parent with
     | None -> failwith "Undefined Variable. Type Checker has bugs."
     | Some (parent) ->
-       let follow_up = unEx(ident acc parent) in
+       let follow_up = unEx(simple_var acc parent) in
        let ir = F.get_exp follow_up sl in
        Ex(ir)

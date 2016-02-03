@@ -11,8 +11,6 @@ type exp =
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-val dummy_exp : exp
-
 val unEx : exp -> Ir.exp
 
 val unNx : exp -> Ir.stmt
@@ -37,3 +35,7 @@ val alloc_local : level -> bool -> access
     source language *)
 
 val const : int -> exp
+
+(** [simple_var acc use_level] given the access of a variable and
+where it is using, return an Ir of var's variable location *)
+val simple_var : access -> level -> exp

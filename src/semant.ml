@@ -181,7 +181,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     | S.VarId (pos, sym) -> begin
         match SymbolTable.look sym venv with
         | None -> raise_undef pos sym
-        | Some (Types.VarType(acc, t)) -> Translate.dummy_exp, t
+        | Some (Types.VarType(acc, t)) ->
+           Translate.simple_var acc curr_level, t
         | Some (typ) -> expect_vtype pos "non-function" typ
       end
     | S.VarField (pos, var1, sym) -> begin
