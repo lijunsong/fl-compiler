@@ -58,6 +58,22 @@ let get_type pos (sym : Symbol.t) (tenv : Types.typeEnv) : Types.t =
   | None -> raise_undef pos sym
   | Some (t) -> t
 
+let transBinOp (op : S.op) : Ir.binop = match op with
+  | S.OpPlus -> Ir.PLUS
+  | S.OpMinus -> Ir.MINUS
+  | S.OpTimes -> Ir.MUL
+  | S.OpDiv -> Ir.DIV
+  | _ -> failwith "Unknown Binary Operator"
+
+let transRelOp (op : S.op) : Ir.relop = match op with
+  | S.OpEq -> Ir.EQ
+  | S.OpNeq -> Ir.NE
+  | S.OpLt -> Ir.LT
+  | S.OpGt -> Ir.GT
+  | S.OpLe -> Ir.LE
+  | S.OpGe -> Ir.GE
+  | _ -> failwith "Unknown Relational Operator "
+
 let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl list) : (Types.typeEnv * Types.valEnv) =
   let trfieldTy (te : Types.typeEnv) fld =
     match SymbolTable.look fld.S.ty te with
@@ -187,11 +203,11 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
       end
     | S.VarField (pos, var1, sym) -> begin
         match trvar var1 with
-        | _, Types.RECORD (lst, _) ->
-           begin try
-               Translate.dummy_exp, List.assoc sym lst
-             with
-               Not_found -> raise_undef pos sym
+        | base, Types.RECORD (lst, _) ->
+           begin
+             match Translate.var_field base sym lst with
+             | None -> raise_undef pos sym
+             | Some (e) -> e
            end
         | _, t -> expect_type pos "record" t
 
@@ -200,7 +216,7 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        match trvar var1 with
        | var_ir, Types.ARRAY (t, _) ->
           begin match trexp e with
-          | e_ir, Types.INT -> Translate.dummy_exp, t
+          | e_ir, Types.INT -> Translate.var_subscript var_ir e_ir, t
           | _, t' -> expect_type pos "int" t'
           end
        | _, t' -> expect_type pos "array" t'
@@ -208,26 +224,39 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
     match exp with
     | S.Int (_, i) -> Translate.const i, Types.INT
     | S.Var (_, var) -> trvar var
-    | S.String (_) -> Translate.dummy_exp, Types.STRING
-    | S.Nil (_) -> Translate.dummy_exp, Types.NIL
-    | S.Break (_) -> Translate.dummy_exp, Types.UNIT
+    | S.String (_, s) -> Translate.string s, Types.STRING
+    | S.Nil (_) ->
+       (* Semantics: the value of a record *)
+       Translate.nil (), Types.NIL
+    | S.Break (_) -> Translate.break() , Types.UNIT
     | S.Op (pos, op, l, r) ->
        let l_ir, left_ty = trexp l in
        let r_ir, right_ty = trexp r in
        begin match op with
-       | S.OpPlus | S.OpMinus | S.OpTimes | S.OpDiv | S.OpLt | S.OpGt | S.OpLe | S.OpGe ->
+       | S.OpPlus | S.OpMinus | S.OpTimes | S.OpDiv ->
+          let binop = transBinOp op in
           if left_ty == Types.INT && right_ty = Types.INT then
-            Translate.dummy_exp, Types.INT
+            Translate.binop binop l_ir r_ir, Types.INT
+          else
+            raise (TypeError(pos, "Operator applied to non-integral types: " ^
+                                    (Types.t_to_string left_ty) ^ " and " ^
+                                      (Types.t_to_string right_ty)))
+       | S.OpLt | S.OpGt | S.OpLe | S.OpGe ->
+          let relop = transRelOp op in
+          if left_ty == Types.INT && right_ty = Types.INT then
+            Translate.relop relop l_ir r_ir, Types.INT
           else
             raise (TypeError(pos, "Operator applied to non-integral types: " ^
                                     (Types.t_to_string left_ty) ^ " and " ^
                                       (Types.t_to_string right_ty)))
        | S.OpEq | S.OpNeq ->
-          if left_ty <> right_ty then
+          let relop = transRelOp op in
+          if left_ty = right_ty then
+            Translate.relop relop l_ir r_ir, left_ty
+          else
             raise (TypeError(pos, "Operator applied to different types: " ^
                                     (Types.t_to_string left_ty) ^ " and " ^
                                       (Types.t_to_string right_ty)))
-          else Translate.dummy_exp, left_ty
        end
     | S.Assign (pos, var, e) ->
        let lhs_ir, left_ty = trvar var in

@@ -21,6 +21,9 @@ module type Frame = sig
 
   val fp : Temp.temp ref
 
+  (** the size of a word in a Frame *)
+  val word_size : int
+
   (** [get_exp base access] given the base location of the access,
   this function returns the IR representing that location's content *)
   val get_exp : Ir.exp -> access -> Ir.exp
@@ -57,6 +60,8 @@ module SparcFrame : Frame = struct
     loc
 
   let fp = ref (Temp.new_temp())
+
+  let word_size = 4
 
   (** Given an expression for the base of an frame and given the
   access of that frame, return an expression for the memory. *)
@@ -155,6 +160,15 @@ let get_static_link level : F.access =
 
 let const (i : int) : exp = Ex(Ir.CONST(i))
 
+(** FIXME *)
+let string (s : string) : exp = Ex(Ir.CONST(0))
+
+(** FIXME *)
+let nil () : exp = Ex(Ir.CONST(0))
+
+(** FIXME: given a label, jump to label *)
+let break () : exp = Ex(Ir.CONST(0))
+
 let rec simple_var (acc : access) (use_level : level) : exp =
   let def_level, fm_acc = acc in
   if use_level = def_level then
@@ -170,3 +184,32 @@ let rec simple_var (acc : access) (use_level : level) : exp =
        let follow_up = unEx(simple_var acc parent) in
        let ir = F.get_exp follow_up sl in
        Ex(ir)
+
+let var_field exp fld fld_list : (exp * 'a) option =
+  let rec find_rec fld fld_lst offset = match fld_lst with
+    | [] -> None, offset
+    | (sym, t) :: tl ->
+       if sym = fld then
+         Some (sym, t), offset
+       else
+         find_rec fld tl (offset + F.word_size)
+  in
+  match find_rec fld fld_list 0 with
+  | None, _ -> None
+  | Some (sym, t), offset ->
+     let ir = Ir.MEM(Ir.BINOP(Ir.PLUS, exp, Ir.CONST(offset))) in
+     Some (Ex(ir), t)
+
+
+let var_subscript base idx : exp =
+  Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, base, idx)))
+
+let binop op operand1 operand2 =
+  let rand1 = unEx operand1 in
+  let rand2 = unEx operand2 in
+  Ex(Ir.BINOP(op, rand1, rand2))
+
+let relop op operand1 operand2 =
+  let rand1 = unEx operand1 in
+  let rand2 = unEx operand2 in
+  Cx(fun t f -> Ir.CJUMP(op, rand1, rand2, t, f))
