@@ -73,3 +73,9 @@ val call : level -> exp list -> exp
 val record : exp list -> exp
 
 val seq : exp list -> exp
+
+val if_cond_unit_body : exp -> exp -> exp option -> exp
+
+val if_cond_nonunit_body : exp -> exp -> exp option -> exp
+
+val while_loop : exp -> exp -> exp

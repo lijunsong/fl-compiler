@@ -95,6 +95,7 @@ let uniq = ref 0
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
+let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 (** To use an IR as an Ex, call this function *)
 let unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
@@ -261,3 +262,63 @@ let seq exp_list : exp =
   | [] -> nil ()
   | hd :: [] -> hd
   | lst -> Ex(seq_rec lst)
+
+let if_cond_unit_body tst thn (els : exp option) : exp =
+  let label_t = make_true_label () in
+  let label_f = make_false_label () in
+  let label_fi = make_fi_label () in
+  let tst_ir = (unCx tst) label_t label_f in
+  let true_part = Ir.SEQ(Ir.LABEL(label_t),
+                         Ir.SEQ(unNx thn,
+                                Ir.SEQ(Ir.JUMP(Ir.LABEL(label_fi)),
+                                       Ir.LABEL(label_f)))) in
+  let res = match els with
+    | None ->
+       Ir.SEQ(tst_ir,
+              Ir.SEQ(true_part,
+                     Ir.LABEL(label_fi)))
+    | Some (e) ->
+       let els_ir = unNx els in
+       Ir.SEQ(tst_ir,
+              Ir.SEQ(true_part,
+                     Ir.SEQ(els_ir, Ir.LABEL(label_fi)))) in
+  Nx(res)
+
+let if_cond_nonunit_body tst thn (els : exp option) : exp =
+  let label_t = make_true_label () in
+  let label_f = make_false_label () in
+  let label_fi = make_fi_label () in
+  let temp = Temp.new_temp () in
+  let tst_ir = (unCx tst) label_t label_f in
+  let true_part =
+    Ir.SEQ(Ir.MOVE(temp, unEx thn),
+           Ir.JUMP(Ir.NAME(label_fi), [label_fi])) in
+  let res = match els with
+    | None -> failwith "use if_cond_unit_body to translate!"
+    | Some (e) ->
+       let els_part = Ir.MOVE(temp, unEx e) in
+       Ir.SEQ(tst_ir,
+              Ir.SEQ(true_part,
+                     Ir.SEQ(els_ir, Ir.LABEL(label_fi)))) in
+  Ex(res)
+
+(**
+ * tst_label:
+ * if tst then
+ *   (body; jump tst_label)
+ * else
+ * done_label:
+ *)
+let while_loop tst body : exp =
+  let label_tst = Temp.new_label ~prefix:"while_test" () in
+  let label_body = Temp.new_label ~prefix:"while_body" () in
+  let label_done = Temp.new_label ~prefix:"while_done" () in
+  let tst_ir = (unCx tst) label_body label_done in
+  let body_ir = Ir.SEQ(Ir.LABEL(label_body),
+                       Ir.SEQ(unNx body,
+                              Ir.JUMP(Ir.NAME(label_tst), [label_tst]))) in
+  let res = Ir.SEQ(Ir.LABEL(label_tst),
+                   Ir.SEQ(tst_ir,
+                          Ir.SEQ(body_ir,
+                                 Ir.LABEL(label_done)))) in
+  Nx(res)

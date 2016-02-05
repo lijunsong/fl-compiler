@@ -74,6 +74,39 @@ let transRelOp (op : S.op) : Ir.relop = match op with
   | S.OpGe -> Ir.GE
   | _ -> failwith "Unknown Relational Operator "
 
+(** Desugar
+ *     for i := lo to hi do body
+ *  to
+ *     let var i := lo
+ *         var limit := hi in
+ *     if (i <= limit)
+ *        while 1 do (
+ *          body
+ *          if (i < limit) then i = i + 1  // extra_if here
+ *          else break
+ *        )
+ *)
+let desugar_forloop (e : S.exp) : S.exp =
+  let dummy = Pos.dummy in
+  match e with
+  | S.For (_, var, lo, hi, body) ->
+     let limit = Symbol.of_string "limit" in
+     let id_var = S.Var(dummy, S.VarId(dummy, var)) in
+     let id_limit = S.Var (dummy, S.VarId(dummy, limit)) in
+     let extra_if = S.If(dummy, S.Op(dummy, S.OpLt, id_var, id_limit),
+                         S.Assign(dummy, S.VarId(dummy, var),
+                                  S.Op(dummy, S.OpPlus, id_var, S.Int(dummy, 1))),
+                         Some (S.Break(dummy))) in
+     let new_body = S.Seq(dummy, [body; extra_if]) in
+     S.Let (dummy,
+            [S.VarDecl(dummy, var, None, lo);
+             S.VarDecl(dummy, limit, None, hi)],
+            S.If(dummy, S.Op(dummy, S.OpLe, id_var, id_limit),
+                 S.While(dummy, S.Int(dummy, 1), new_body),
+                 None))
+  | _ -> failwith "unreachable in desugar_forloop"
+
+
 let rec transDecl (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types.valEnv) (decls : S.decl list) : (Types.typeEnv * Types.valEnv) =
   let trfieldTy (te : Types.typeEnv) fld =
     match SymbolTable.look fld.S.ty te with
@@ -318,7 +351,8 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
          expect_type (S.get_exp_pos tst) "int" tst_t
        else
          begin match trexp thn with
-         | thn_ir, Types.UNIT -> Translate.if_cond, Types.UNIT
+         | thn_ir, Types.UNIT ->
+            Translate.if_cond_unit_body tst_ir thn_ir None, Types.UNIT
          | _, thn_t -> expect_type (S.get_exp_pos thn) "unit" thn_t
          end
     | S.If (pos, tst, thn, Some (els)) ->
@@ -328,8 +362,12 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        else
          let thn_ir, thn_t = trexp thn in
          let els_ir, els_t = trexp els in
-         if thn_t = els_t then Translate.dummy_exp, thn_t
-         else expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
+         if thn_t <> els_t then
+           expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
+         else if thn_t = Types.UNIT then
+           Translate.if_cond_unit_body tst_ir thn_ir (Some els_ir), Types.UNIT
+         else
+           Translate.if_cond_nonunit_body tst_ir thn_ir (Some els_ir), thn_t
     | S.While (pos, tst, body) ->
        let tst_ir, tst_t = trexp tst in
        if tst_t <> Types.INT then
@@ -337,17 +375,20 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        else let body_ir, body_t = trexp body in
             if body_t <> Types.UNIT then
               expect_type (S.get_exp_pos body) "unit" body_t
-            else Translate.dummy_exp, Types.UNIT
+            else Translate.while_loop tst_ir body_ir, Types.UNIT
     | S.For (pos, v, lo, hi, body) ->
        (** For exp implicitly binds v to the type of lo/hi in the body *)
        begin match trexp lo, trexp hi with
        | (lo_ir, Types.INT), (hi_ir, Types.INT) ->
           let acc = Translate.alloc_local curr_level true in
           let venv' = SymbolTable.enter v (Types.VarType(acc, Types.INT)) venv in
-          let body_ir, body_t = transExp curr_level tenv venv' body in
+          let _, body_t = transExp curr_level tenv venv' body in
+          (* discard the translated body *)
           if body_t <> Types.UNIT then
             expect_type (S.get_exp_pos body) "unit" body_t
-          else Translate.dummy_exp, body_t
+          else
+            let new_forloop = desugar_forloop exp in
+            transExp curr_level tenv venv new_forloop
        | (_, lo_t), (_, Types.INT) ->
           expect_type (S.get_exp_pos lo) "int" lo_t
        | (_, Types.INT), (_, hi_t) ->
