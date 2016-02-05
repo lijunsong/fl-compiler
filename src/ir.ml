@@ -22,3 +22,10 @@ type exp =
  and relop =
    | EQ | NE | LT | GT | LE | GE
    | ULT | ULE | UGT | UGE
+
+(** chain stmts list by SEQ *)
+let rec seq stmts : stmt = match stmts with
+  | [] -> failwith "seq cannot take empty stmts"
+  | hd :: [] -> hd
+  | hd :: tl ->
+     SEQ(hd, seq tl)

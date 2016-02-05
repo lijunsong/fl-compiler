@@ -14,7 +14,7 @@ type exp =
   | Op of pos_t * op * exp * exp (** op * left * right *)
   | Assign of pos_t * var * exp
   | Call of pos_t * symbol * exp list
-  | Record of pos_t * symbol * (pos_t * symbol * exp) list (** type * fields *)
+  | Record of pos_t * symbol * (pos_t * symbol * exp) list (** construct a record value: type * fields *)
   | Seq of pos_t * exp list (** This construct does not need pos_t *)
   | If of pos_t * exp * exp * exp option (** if test then else *)
   | While of pos_t * exp * exp (** while test body *)

@@ -60,6 +60,9 @@ let suite =
         assert_fail
           "/* error: undef array of */ let type a = array of nonexists in 1 end"
     ;
+      "unmatched record" >::
+        assert_fail
+          "/* error */ let type a = {x : int, y : int} var x = a { y=1, x=0 } in 1 end"
     ] @ (get_external_tests())
 
 let _ =

@@ -60,3 +60,16 @@ val break: unit -> exp
 
 (** [binop op operand1 operand2] *)
 val binop : Ir.binop -> exp -> exp -> exp
+
+(** [relop op operand1 operand2] *)
+val relop : Ir.relop -> exp -> exp -> exp
+
+(** [assign lhs rhs] *)
+val assign : exp -> exp -> exp
+
+(** [call f args] *)
+val call : level -> exp list -> exp
+
+val record : exp list -> exp
+
+val seq : exp list -> exp

@@ -213,3 +213,51 @@ let relop op operand1 operand2 =
   let rand1 = unEx operand1 in
   let rand2 = unEx operand2 in
   Cx(fun t f -> Ir.CJUMP(op, rand1, rand2, t, f))
+
+let assign (lhs : exp) (rhs : exp) : exp =
+  let l = unEx lhs in
+  let r = unEx rhs in
+  Nx(Ir.MOVE(l, r))
+
+(** FIXME: add static link to args_ir *)
+let call def_level args : exp =
+  let label = F.get_name def_level.frame in
+  let args_ir = List.map (fun arg -> unEx arg) args in
+  Ex(Ir.CALL(Ir.NAME(label), args_ir))
+
+(** FIXME:
+    1. is empty fields allowed?
+    2. "malloc" should not be hard coded here. *)
+let record (fields : exp list) =
+  let temp = Ir.TEMP(Temp.new_temp()) in
+  let n = List.length fields in
+  let init_ir_stmts =
+    List.mapi (fun i e ->
+        let v = unEx e in
+        Ir.MOVE(Ir.MEM(Ir.BINOP(Ir.PLUS,
+                                Ir.CONST(i * F.word_size),
+                                temp)),
+                v)
+      ) fields in
+  let init_ir_stmt = Ir.seq init_ir_stmts in
+  let alloca = Ir.MOVE(temp, Ir.CALL(Ir.NAME(Temp.named_label("malloc")),
+                                     [Ir.CONST(F.word_size * n)])) in
+  Ex(Ir.ESEQ(Ir.SEQ(alloca, init_ir_stmt),
+             temp))
+
+(** evaluate all except for the last one for side effect.
+ * TODO: simplify this when you know what to do for empty sequence.*)
+let seq exp_list : exp =
+  let rec seq_rec (seqs : exp list) : Ir.exp = match seqs with
+    | [] -> failwith "unreachable"
+    | hd :: [] -> failwith "unreachable"
+    | hd :: tl :: [] -> Ir.ESEQ(unNx hd, unEx tl)
+    | hd :: tl -> begin match seq_rec tl with
+                 | Ir.ESEQ (stmt, e) -> Ir.ESEQ(Ir.SEQ(unNx hd, stmt), e)
+                 | _ -> failwith "unreachable"
+                 end
+  in
+  match exp_list with
+  | [] -> nil ()
+  | hd :: [] -> hd
+  | lst -> Ex(seq_rec lst)

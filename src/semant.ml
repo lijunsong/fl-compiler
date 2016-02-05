@@ -263,60 +263,62 @@ and transExp (curr_level : Translate.level) (tenv : Types.typeEnv) (venv : Types
        let rhs_ir, right_ty = trexp e in
        if left_ty <> right_ty then
          expect_type pos (Types.t_to_string left_ty) right_ty
-       else Translate.dummy_exp, Types.UNIT
+       else
+         (* Ah! the overloaded MEM actually simplies the translation
+         of assign. *)
+         Translate.assign lhs_ir rhs_ir, Types.UNIT
     | S.Call (pos, f, args) -> begin
         match SymbolTable.look f venv with
+        | None -> raise_undef pos f
         | Some (Types.VarType(_)) ->
            raise (TypeError(pos, (Symbol.to_string f) ^ " is not applicable"))
         | Some (Types.FuncType (level, arg_t, ret_t)) ->
-           let rec check_arg (expect : Types.t list) (actual : S.exp list) : unit = match expect, actual with
-             | [], [] -> ()
+           let rec check_arg (expect : Types.t list) (actual : S.exp list) : Translate.exp list = match expect, actual with
+             | [], [] -> []
              | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
                                                              (List.length arg_t) (List.length args)))
              | hd :: tl, hd' :: tl' ->
                 let actual_ir, actual_t = trexp hd' in
                 if actual_t <> hd then
                   expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t
-                else check_arg tl tl'
+                else
+                  actual_ir :: check_arg tl tl'
            in
-           check_arg arg_t args;
-           Translate.dummy_exp, ret_t
-        | None -> raise_undef pos f
+           let argsv = check_arg arg_t args in
+           Translate.call level argsv, ret_t
       end
     | S.Record (pos, record, fields) ->
        begin match SymbolTable.look record tenv with
        | None -> raise_undef pos record
        | Some (record) -> begin
-           (match record with
-            | Types.RECORD(lst, uniq) ->
-               List.iter (fun (pos, sym, e) ->
-                   (* first see if sym is in the record type. *)
-                   match Types.record_find lst sym with
-                   | None -> raise_undef pos sym
-                   | Some (t) ->
-                      (* 2. see if e's type matches declared type *)
-                      let e_ir, e_t = trexp e in
-                      if t = e_t || e_t = Types.NIL then ()
-                      else expect_type pos (Types.t_to_string t) e_t
-                 ) fields
-            | _ -> expect_type pos "record" record);
-           Translate.dummy_exp, record
+           match record with
+           | Types.RECORD(lst, uniq) ->
+              let flds = List.map (fun (pos, sym, e) ->
+                             (* first see if sym is in the record type. *)
+                             match Types.record_find lst sym with
+                             | None -> raise_undef pos sym
+                             | Some (t) ->
+                                (* 2. see if e's type matches declared type *)
+                                let e_ir, e_t = trexp e in
+                                if t = e_t || e_t = Types.NIL then
+                                  e_ir
+                                else
+                                  expect_type pos (Types.t_to_string t) e_t
+                           ) fields in
+              Translate.record flds, record
+           | _ -> expect_type pos "record" record
          end
        end
     | S.Seq (_, lst) ->
-       let rec trexp_list = function
-         | [] -> Types.UNIT
-         | hd :: [] -> let _, t = trexp hd in t
-         | hd :: tl -> ignore(trexp hd); trexp_list tl
-       in
-       Translate.dummy_exp, trexp_list lst
+       Translate.seq (List.map (fun seq -> let e, _ = trexp seq in e)
+                               lst), Types.UNIT
     | S.If (pos, tst, thn, None) ->
        let tst_ir, tst_t = trexp tst in
        if tst_t <> Types.INT then
          expect_type (S.get_exp_pos tst) "int" tst_t
        else
          begin match trexp thn with
-         | thn_ir, Types.UNIT -> Translate.dummy_exp, Types.UNIT
+         | thn_ir, Types.UNIT -> Translate.if_cond, Types.UNIT
          | _, thn_t -> expect_type (S.get_exp_pos thn) "unit" thn_t
          end
     | S.If (pos, tst, thn, Some (els)) ->
