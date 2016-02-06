@@ -1,9 +1,10 @@
+open Sexplib.Std
 open Symbol
 open Batteries
 
 module type Frame = sig
-  type frame
-  type access
+  type frame with sexp
+  type access with sexp
 
   (** [new_frame name formals] create a frame named l. A list of
   bool indicates whether each formal argument escapes. *)
@@ -38,12 +39,13 @@ module SparcFrame : Frame = struct
   type access =
     | InReg of Temp.temp   (** which register to store *)
     | InMem of int         (** offset in the frame *)
+     with sexp
 
   type frame = {
       name : Temp.label;
       formals : access list;
       mutable locals : access list;
-    }
+    } with sexp
 
   let new_frame (name : Temp.label) (formals : bool list) : frame =
     { name;
@@ -84,18 +86,18 @@ end
 
 module F = SparcFrame
 
-type level = { parent : level option; frame : F.frame; cmp : int }
+type level = { parent : level option; frame : F.frame; cmp : int } with sexp
 (** level is a wrapper of Frame with additional _static_ scope
  * information *)
 
-type access = level * F.access
+type access = level * F.access with sexp
 (** access is a wrapper to Frame.access with additional level
  * information *)
 
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
-  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
+  | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
 
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 

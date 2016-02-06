@@ -436,4 +436,15 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
     trexp expr
 
 let trans_prog (e : S.exp) : expty =
-  trans_exp Translate.outermost Types.typeEnv Types.valEnv e
+    trans_exp Translate.outermost Types.typeEnv Types.valEnv e
+
+
+let type_check (e : S.exp) : unit =
+  try
+    let (_, _) : expty = trans_prog e in
+    ()
+  with
+  | TypeError (pos, msg) ->
+    printf "TypeError:%s: %s" (Pos.to_string pos) msg
+  | UndefinedError (pos, msg) ->
+    printf "TypeError:%s: %s" (Pos.to_string pos) msg

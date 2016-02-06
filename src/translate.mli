@@ -11,7 +11,7 @@ type access
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
-  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
+  | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
 
 val unEx : exp -> Ir.exp
 

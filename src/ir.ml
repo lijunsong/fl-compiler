@@ -1,6 +1,8 @@
 (** This module defines the Intermediate Representation of the tiger
  * compiler. *)
 
+open Sexplib.Std
+
 type exp =
   | CONST of int
   | NAME of Temp.label
@@ -22,6 +24,7 @@ type exp =
  and relop =
    | EQ | NE | LT | GT | LE | GE
    | ULT | ULE | UGT | UGE
+   with sexp
 
 (** chain stmts list by SEQ *)
 let rec seq stmts : stmt = match stmts with

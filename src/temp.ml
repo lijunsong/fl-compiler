@@ -1,7 +1,8 @@
+open Sexplib.Std
 open Symbol
 
-type label = Symbol.t
-type temp = int
+type label = Symbol.t with sexp
+type temp = int with sexp
 
 let temp_count = ref 0
 let label_count = ref 0

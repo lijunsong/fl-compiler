@@ -1,11 +1,11 @@
 (** Temp are abstract names for local variables *)
 
 (** abstract names for static memory location *)
-type label
+type label with sexp
 
 (** a value temporarly held in registers, which we assumed to be
   infinite *)
-type temp
+type temp with sexp
 
 val new_temp : unit -> temp
 
