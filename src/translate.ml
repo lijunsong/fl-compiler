@@ -21,12 +21,17 @@ module type Frame = sig
 
   val fp : Temp.temp ref
 
+  val rv : Temp.temp ref
+
   (** the size of a word in a Frame *)
   val word_size : int
 
   (** [get_exp base access] given the base location of the access,
   this function returns the IR representing that location's content *)
   val get_exp : Ir.exp -> access -> Ir.exp
+
+  (** [external_call f args] call external function f with args *)
+  val external_call : string -> Ir.exp list -> Ir.exp
 end
 
 module SparcFrame : Frame = struct
@@ -61,14 +66,20 @@ module SparcFrame : Frame = struct
 
   let fp = ref (Temp.new_temp())
 
+  let rv = ref (Temp.new_temp())
+
   let word_size = 4
 
   (** Given an expression for the base of an frame and given the
-  access of that frame, return an expression for the memory. *)
+  access of that frame, return an expression for contents of the
+  memory. *)
   let get_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc with
     | InReg(temp) -> Ir.TEMP(temp)
     | InMem(offset) ->
        Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
+
+  let external_call f args =
+    Ir.CALL(Ir.NAME(Temp.named_label f), args)
 end
 
 module F = SparcFrame
@@ -186,7 +197,7 @@ let rec simple_var (acc : access) (use_level : level) : exp =
        let ir = F.get_exp follow_up sl in
        Ex(ir)
 
-let var_field exp fld fld_list : (exp * 'a) option =
+let var_field (exp : exp) (fld : Symbol.t) fld_list : (exp * 'a) option =
   let rec find_rec fld fld_lst offset = match fld_lst with
     | [] -> None, offset
     | (sym, t) :: tl ->
@@ -198,12 +209,12 @@ let var_field exp fld fld_list : (exp * 'a) option =
   match find_rec fld fld_list 0 with
   | None, _ -> None
   | Some (sym, t), offset ->
-     let ir = Ir.MEM(Ir.BINOP(Ir.PLUS, exp, Ir.CONST(offset))) in
+     let ir = Ir.MEM(Ir.BINOP(Ir.PLUS, unEx exp, Ir.CONST(offset))) in
      Some (Ex(ir), t)
 
 
 let var_subscript base idx : exp =
-  Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, base, idx)))
+  Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, unEx base, unEx idx)))
 
 let binop op operand1 operand2 =
   let rand1 = unEx operand1 in
@@ -241,10 +252,13 @@ let record (fields : exp list) =
                 v)
       ) fields in
   let init_ir_stmt = Ir.seq init_ir_stmts in
-  let alloca = Ir.MOVE(temp, Ir.CALL(Ir.NAME(Temp.named_label("malloc")),
-                                     [Ir.CONST(F.word_size * n)])) in
+  let alloca = Ir.MOVE(temp, F.external_call "malloc" [Ir.CONST(F.word_size * n)]) in
   Ex(Ir.ESEQ(Ir.SEQ(alloca, init_ir_stmt),
              temp))
+
+let array (n : exp) (init : exp) : exp =
+  let ir = F.external_call "initArray" [unEx n; unEx init] in
+  Ex(ir)
 
 (** evaluate all except for the last one for side effect.
  * TODO: simplify this when you know what to do for empty sequence.*)
@@ -270,7 +284,7 @@ let if_cond_unit_body tst thn (els : exp option) : exp =
   let tst_ir = (unCx tst) label_t label_f in
   let true_part = Ir.SEQ(Ir.LABEL(label_t),
                          Ir.SEQ(unNx thn,
-                                Ir.SEQ(Ir.JUMP(Ir.LABEL(label_fi)),
+                                Ir.SEQ(Ir.JUMP(Ir.NAME(label_fi), [label_fi]),
                                        Ir.LABEL(label_f)))) in
   let res = match els with
     | None ->
@@ -278,7 +292,7 @@ let if_cond_unit_body tst thn (els : exp option) : exp =
               Ir.SEQ(true_part,
                      Ir.LABEL(label_fi)))
     | Some (e) ->
-       let els_ir = unNx els in
+       let els_ir = unNx e in
        Ir.SEQ(tst_ir,
               Ir.SEQ(true_part,
                      Ir.SEQ(els_ir, Ir.LABEL(label_fi)))) in
@@ -291,15 +305,16 @@ let if_cond_nonunit_body tst thn (els : exp option) : exp =
   let temp = Temp.new_temp () in
   let tst_ir = (unCx tst) label_t label_f in
   let true_part =
-    Ir.SEQ(Ir.MOVE(temp, unEx thn),
+    Ir.SEQ(Ir.MOVE(Ir.TEMP(temp), unEx thn),
            Ir.JUMP(Ir.NAME(label_fi), [label_fi])) in
   let res = match els with
     | None -> failwith "use if_cond_unit_body to translate!"
     | Some (e) ->
-       let els_part = Ir.MOVE(temp, unEx e) in
-       Ir.SEQ(tst_ir,
-              Ir.SEQ(true_part,
-                     Ir.SEQ(els_ir, Ir.LABEL(label_fi)))) in
+       let els_part = Ir.MOVE(Ir.TEMP(temp), unEx e) in
+       Ir.ESEQ(Ir.SEQ(tst_ir,
+                      Ir.SEQ(true_part,
+                             Ir.SEQ(els_part, Ir.LABEL(label_fi)))),
+               Ir.TEMP(temp))in
   Ex(res)
 
 (**
@@ -322,3 +337,7 @@ let while_loop tst body : exp =
                           Ir.SEQ(body_ir,
                                  Ir.LABEL(label_done)))) in
   Nx(res)
+
+let prepend_stmts exp_lst exp : exp =
+  let ir_lst = List.map (fun e -> unNx e) exp_lst in
+  Nx(Ir.SEQ(Ir.seq ir_lst, unNx exp))

@@ -79,3 +79,9 @@ val if_cond_unit_body : exp -> exp -> exp option -> exp
 val if_cond_nonunit_body : exp -> exp -> exp option -> exp
 
 val while_loop : exp -> exp -> exp
+
+val array : exp -> exp -> exp
+
+(** [prepend_stmts lst e] Prepend a list of statements [lst] to the
+given [e] *)
+val prepend_stmts : exp list -> exp -> exp
