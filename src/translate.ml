@@ -138,7 +138,10 @@ let unEx (exp : exp) : Ir.exp = match exp with
 (** To use an IR as an Nx, call this function *)
 let unNx = function
   | Nx (stmt) -> stmt
-  | Ex (e) -> Ir.EXP(e)
+  | Ex (e) -> begin match e with
+      | Ir.ESEQ (s, e0) -> Ir.SEQ(s, Ir.EXP(e0))
+      | _ -> Ir.EXP(e)
+    end
   | Cx (genjump) ->
      let label_t, label_f = make_true_label(), make_false_label() in
      genjump label_t label_f
