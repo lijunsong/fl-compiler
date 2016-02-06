@@ -33,10 +33,10 @@ let to_sym = Symbol.of_string
 %left AND OR
 %left ASSIGN
 %left LBRACKET RBRACKET LBRACE RBRACE LP RP
+%right ELSE DO OF THEN /* shift the else */
 %nonassoc EQ NEQ LT GT LE GE
 %left PLUS MINUS
 %left TIMES DIV
-%right ELSE DO OF THEN /* shift the else */
 %left Id
 
 %nonassoc UMINUS /* last one: highest precedence */

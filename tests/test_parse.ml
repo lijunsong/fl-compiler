@@ -186,9 +186,11 @@ let suite =
 
       "If" >::
         assert_parse
-          "if 1 then if 2 then 3 else 4"
+          "if 1 then if 2 then 3 else 4 * 4"
           (S.If(dummy, S.Int(dummy, 1),
-                S.If(dummy, S.Int(dummy, 2), S.Int(dummy, 3), Some (S.Int(dummy, 4))), None))
+                S.If(dummy, S.Int(dummy, 2), S.Int(dummy, 3),
+                     Some (S.Op(dummy, S.OpTimes, S.Int(dummy, 4), S.Int(dummy, 4))))
+                , None))
     ;
 
       "seq" >::
