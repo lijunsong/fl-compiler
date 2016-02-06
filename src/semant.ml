@@ -89,20 +89,20 @@ let trans_relop (op : S.op) : Ir.relop = match op with
 let desugar_forloop (e : S.exp) : S.exp =
   let dummy = Pos.dummy in
   match e with
-  | S.For (_, var, lo, hi, body) ->
-     let limit = Symbol.of_string "limit" in
-     let id_var = S.Var(dummy, S.VarId(dummy, var)) in
+  | S.For (pos, var, lo, hi, body) ->
+     let limit = Symbol.of_string "%limit" in
+     let id_var = S.Var(pos, S.VarId(dummy, var)) in
      let id_limit = S.Var (dummy, S.VarId(dummy, limit)) in
-     let extra_if = S.If(dummy, S.Op(dummy, S.OpLt, id_var, id_limit),
+     let extra_if = S.If(pos, S.Op(pos, S.OpLt, id_var, id_limit),
                          S.Assign(dummy, S.VarId(dummy, var),
                                   S.Op(dummy, S.OpPlus, id_var, S.Int(dummy, 1))),
                          Some (S.Break(dummy))) in
      let new_body = S.Seq(dummy, [body; extra_if]) in
      S.Let (dummy,
-            [S.VarDecl(dummy, var, None, lo);
+            [S.VarDecl(pos, var, None, lo);
              S.VarDecl(dummy, limit, None, hi)],
-            S.If(dummy, S.Op(dummy, S.OpLe, id_var, id_limit),
-                 S.While(dummy, S.Int(dummy, 1), new_body),
+            S.If(dummy, S.Op(pos, S.OpLe, id_var, id_limit),
+                 S.While(pos, S.Int(dummy, 1), new_body),
                  None))
   | _ -> failwith "unreachable in desugar_forloop"
 
@@ -414,6 +414,8 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       | S.Let (pos, decl, body) ->
          let tenv', venv', inits = trans_decl curr_level tenv venv decl in
          let body_ir, t = trans_exp curr_level tenv' venv' body in
+         Translate.debug_level curr_level;
+         Types.debug_valEnv venv';
          Translate.prepend_stmts inits body_ir, t
 
       | S.Arr (pos, typ, size, init) ->

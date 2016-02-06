@@ -33,6 +33,8 @@ val get_label : level -> Temp.label
   with [escape] indicating whether the variable escapes. *)
 val alloc_local : level -> bool -> access
 
+val debug_level : level -> unit
+
 (** The following functions provides interface to create [exp] from
     source language *)
 

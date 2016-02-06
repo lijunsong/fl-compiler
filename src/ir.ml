@@ -29,7 +29,7 @@ type exp =
 
 (** chain stmts list by SEQ *)
 let rec seq stmts : stmt = match stmts with
-  | [] -> failwith "seq cannot take empty stmts"
+  | [] -> EXP(CONST(0))
   | hd :: [] -> hd
   | hd :: tl ->
      SEQ(hd, seq tl)

@@ -116,15 +116,14 @@ let uniq = ref 0
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
 let make_fi_label () = Temp.new_label ~prefix:"fi" ()
+
+let debug_level level =
+  Sexp.output_hum Pervasives.stdout (sexp_of_level level)
+
 (** To use an IR as an Ex, call this function *)
 let unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
-  | Nx (stmt) -> begin match stmt with
-      | Ir.EXP (e) -> e
-      | _ ->
-        print_endline (Ir.stmt_to_string stmt);
-        failwith "NYI"
-    end
+  | Nx (stmt) -> Ir.ESEQ(stmt, Ir.CONST(0))
   | Cx (genjump) ->
      let label_t  = make_true_label () in
      let label_f =  make_false_label () in
@@ -147,7 +146,8 @@ let unNx = function
 (** To use an IR as a Cx, call this function *)
 let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Cx (genjump) -> genjump
-  | Ex (e) -> failwith "NYI unCx"
+  | Ex (e) -> fun t f -> Ir.CJUMP(Ir.NE, e, Ir.CONST(0),
+                                  t, f)
   | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
