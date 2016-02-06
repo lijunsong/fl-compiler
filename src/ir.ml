@@ -2,6 +2,7 @@
  * compiler. *)
 
 open Sexplib.Std
+open Sexplib
 
 type exp =
   | CONST of int
@@ -32,3 +33,9 @@ let rec seq stmts : stmt = match stmts with
   | hd :: [] -> hd
   | hd :: tl ->
      SEQ(hd, seq tl)
+
+let exp_to_string e =
+  (Sexp.to_string_hum (sexp_of_exp e))
+
+let stmt_to_string e =
+  (Sexp.to_string_hum (sexp_of_stmt e))

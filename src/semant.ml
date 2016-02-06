@@ -356,9 +356,10 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
              | _ -> expect_type pos "record" record
            end
          end
-      | S.Seq (_, lst) ->
-         Translate.seq (List.map (fun seq -> let e, _ = trexp seq in e)
-                                 lst), Types.UNIT
+      | S.Seq (_, lst) -> begin match lst with
+          | [] -> Translate.no_value(), Types.UNIT
+          | lst -> Translate.seq (List.map trexp lst)
+        end
       | S.If (pos, tst, thn, None) ->
          let tst_ir, tst_t = trexp tst in
          if tst_t <> Types.INT then
@@ -445,6 +446,6 @@ let type_check (e : S.exp) : unit =
     ()
   with
   | TypeError (pos, msg) ->
-    printf "TypeError:%s: %s" (Pos.to_string pos) msg
+    printf "TypeError:%s: %s\n" (Pos.to_string pos) msg
   | UndefinedError (pos, msg) ->
-    printf "TypeError:%s: %s" (Pos.to_string pos) msg
+    printf "TypeError:%s: %s\n" (Pos.to_string pos) msg

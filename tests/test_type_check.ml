@@ -5,7 +5,7 @@ open Batteries
 let assert_pass (s : string) =
   let test ctx =
     let ast = Parse.parse_string s in
-    Semant.transProg (ast)
+    ignore(Semant.trans_prog ast)
   in
   test
 
@@ -13,7 +13,7 @@ let assert_fail (s : string) =
   let test ctx =
     let ast = Parse.parse_string s in
     try
-      ignore(Semant.transProg (ast));
+      ignore(Semant.trans_prog ast);
       assert_failure "unexpected pass."
     with
     | Failure (msg) -> assert_failure "Internal Error"
@@ -62,7 +62,12 @@ let suite =
     ;
       "unmatched record" >::
         assert_fail
-          "/* error */ let type a = {x : int, y : int} var x = a { y=1, x=0 } in 1 end"
+          "/* error */ let type a = {x : int, y : int} var x := a { y=1, x=0 } in 1 end"
+    ;
+      "empty let" >::
+      assert_pass
+          "/* error */ let type a = int in end"
+    ;
     ] @ (get_external_tests())
 
 let _ =

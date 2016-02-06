@@ -54,7 +54,7 @@ let print () =
   match !program with
   | EMPTY -> failwith "load a tiger program first!"
   | TIGER(t) ->
-    print_string t
+    print_endline t
   | AST(ast) ->
     let sexp = S.sexp_of_exp ast in
     Sexp.output_hum Pervasives.stdout sexp

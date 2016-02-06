@@ -58,6 +58,8 @@ val nil : unit -> exp
 
 val break: unit -> exp
 
+val no_value: unit -> exp
+
 (** [binop op operand1 operand2] *)
 val binop : Ir.binop -> exp -> exp -> exp
 
@@ -72,7 +74,7 @@ val call : level -> exp list -> exp
 
 val record : exp list -> exp
 
-val seq : exp list -> exp
+val seq : (exp * 'a) list -> (exp * 'a)
 
 val if_cond_unit_body : exp -> exp -> exp option -> exp
 

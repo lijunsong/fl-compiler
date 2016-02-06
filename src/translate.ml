@@ -1,4 +1,5 @@
 open Sexplib.Std
+open Sexplib
 open Symbol
 open Batteries
 
@@ -20,9 +21,9 @@ module type Frame = sig
   [escape] indicating whether the variable escapes *)
   val alloc_local : frame -> bool -> access
 
-  val fp : Temp.temp ref
+  val fp : Temp.temp
 
-  val rv : Temp.temp ref
+  val rv : Temp.temp
 
   (** the size of a word in a Frame *)
   val word_size : int
@@ -33,6 +34,9 @@ module type Frame = sig
 
   (** [external_call f args] call external function f with args *)
   val external_call : string -> Ir.exp list -> Ir.exp
+
+  (** dump frame information for debugging *)
+  val debug_dump : frame -> unit
 end
 
 module SparcFrame : Frame = struct
@@ -66,9 +70,9 @@ module SparcFrame : Frame = struct
     fm.locals <- loc :: fm.locals;
     loc
 
-  let fp = ref (Temp.new_temp())
+  let fp = Temp.new_temp()
 
-  let rv = ref (Temp.new_temp())
+  let rv = Temp.new_temp()
 
   let word_size = 4
 
@@ -82,6 +86,9 @@ module SparcFrame : Frame = struct
 
   let external_call f args =
     Ir.CALL(Ir.NAME(Temp.named_label f), args)
+
+  let debug_dump fm =
+    Sexp.output_hum Pervasives.stdout (sexp_of_frame fm)
 end
 
 module F = SparcFrame
@@ -112,7 +119,12 @@ let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 (** To use an IR as an Ex, call this function *)
 let unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
-  | Nx (stmt) -> failwith "unEx(Nx)"
+  | Nx (stmt) -> begin match stmt with
+      | Ir.EXP (e) -> e
+      | _ ->
+        print_endline (Ir.stmt_to_string stmt);
+        failwith "NYI"
+    end
   | Cx (genjump) ->
      let label_t  = make_true_label () in
      let label_f =  make_false_label () in
@@ -136,7 +148,7 @@ let unNx = function
 let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Cx (genjump) -> genjump
   | Ex (e) -> failwith "NYI unCx"
-  | Nx (e) -> failwith "unreachable"
+  | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
                   frame = F.new_frame (Temp.new_label ~prefix:"main" ()) [];
@@ -183,10 +195,12 @@ let nil () : exp = Ex(Ir.CONST(0))
 (** FIXME: given a label, jump to label *)
 let break () : exp = Ex(Ir.CONST(0))
 
+let no_value () : exp = Nx(Ir.EXP(Ir.CONST(0)))
+
 let rec simple_var (acc : access) (use_level : level) : exp =
   let def_level, fm_acc = acc in
   if use_level = def_level then
-    let ir = F.get_exp (Ir.TEMP(!F.fp)) fm_acc in
+    let ir = F.get_exp (Ir.TEMP(F.fp)) fm_acc in
     Ex(ir)
   else
     (* get static link *)
@@ -262,22 +276,27 @@ let array (n : exp) (init : exp) : exp =
   let ir = F.external_call "initArray" [unEx n; unEx init] in
   Ex(ir)
 
-(** evaluate all except for the last one for side effect.
- * TODO: simplify this when you know what to do for empty sequence.*)
-let seq exp_list : exp =
-  let rec seq_rec (seqs : exp list) : Ir.exp = match seqs with
-    | [] -> failwith "unreachable"
-    | hd :: [] -> failwith "unreachable"
-    | hd :: tl :: [] -> Ir.ESEQ(unNx hd, unEx tl)
-    | hd :: tl -> begin match seq_rec tl with
-                 | Ir.ESEQ (stmt, e) -> Ir.ESEQ(Ir.SEQ(unNx hd, stmt), e)
-                 | _ -> failwith "unreachable"
-                 end
+(** construct Ir.SEQ from the given list except for the last one.
+ * In general, given a list of expression [exp_lst],
+ * this function constructs ESEQ(SEQ(SEQ(SEQ(e0 e1), e2),..), en),
+ * and returns the associated value (typed ['a]) of en
+*)
+let seq (exp_list :  (exp * 'a) list) : exp * 'a =
+  (* For example: seq 1 2 3 4 5
+   * is converted to reduce 1 2 [3 4 5] *)
+  let rec reduce init prev rest =
+    let init', _ = init in
+    let prev', prev_t = prev in
+    match rest with
+    | [] -> Ex(Ir.ESEQ (unNx init', unEx prev')), prev_t
+    | hd :: tl ->
+      let ir = Ir.SEQ (unNx init', unNx prev') in
+      reduce (Nx ir, prev_t (*prev_t will be discarded*)) hd tl
   in
   match exp_list with
-  | [] -> nil ()
-  | hd :: [] -> hd
-  | lst -> Ex(seq_rec lst)
+    | [] -> failwith "Translate.seq takes at least one argument"
+    | hd :: [] -> hd
+    | hd0 :: hd1 :: tl  -> reduce hd0 hd1 tl
 
 let if_cond_unit_body tst thn (els : exp option) : exp =
   let label_t = make_true_label () in
