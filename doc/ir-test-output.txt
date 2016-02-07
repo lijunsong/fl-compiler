@@ -1,0 +1,2809 @@
+*********************************************************
+Automated testing started on Mon Nov 5 13:16:58 EST 2007
+*********************************************************
+   
+Now running ./testcases/test10.tig
+./testcases/test10.tig:2.20: Body of while loop not of void type
+Parsing successful!
+
+Intermediate code for this program:
+ SEQ(
+  LABEL L11,
+  SEQ(
+   CJUMP(GT,
+    CONST 10,
+    CONST 5,
+    L12,L13),
+   SEQ(
+    LABEL L12,
+    SEQ(
+     EXP(
+      BINOP(PLUS,
+       CONST 5,
+       CONST 6)),
+     SEQ(
+      JUMP(
+       NAME L11),
+      LABEL L13)))))
+_______________________________________________________
+Now running ./testcases/test11.tig
+./testcases/test11.tig:2.17: Upper bound of for loop not of integer type
+./testcases/test11.tig:3.6: Cannot assign to loop variable i
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    TEMP t128,
+    CONST 10),
+   ESEQ(
+    MOVE(
+     TEMP t129,
+     NAME L11),
+    ESEQ(
+     SEQ(
+      LABEL L12,
+      SEQ(
+       CJUMP(LE,
+        TEMP t128,
+        TEMP t129,
+        L13,L14),
+       SEQ(
+        LABEL L13,
+        SEQ(
+         EXP(
+          ESEQ(
+           MOVE(
+            MEM(
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4))),
+            BINOP(MINUS,
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4)),
+             CONST 1)),
+           BINOP(PLUS,
+            TEMP t128,
+            CONST 1))),
+         SEQ(
+          JUMP(
+           NAME L12),
+          LABEL L14))))),
+     CONST 0))))
+_______________________________________________________
+Now running ./testcases/test12.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    MOVE(
+     TEMP t128,
+     CONST 0),
+    ESEQ(
+     MOVE(
+      TEMP t129,
+      CONST 100),
+     ESEQ(
+      SEQ(
+       LABEL L11,
+       SEQ(
+        CJUMP(LE,
+         TEMP t128,
+         TEMP t129,
+         L12,L13),
+        SEQ(
+         LABEL L12,
+         SEQ(
+          EXP(
+           ESEQ(
+            EXP(
+             ESEQ(
+              MOVE(
+               MEM(
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t127,
+                  CONST -4))),
+               BINOP(PLUS,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t127,
+                  CONST -4)),
+                CONST 1)),
+              CONST 0)),
+            BINOP(PLUS,
+             TEMP t128,
+             CONST 1))),
+          SEQ(
+           JUMP(
+            NAME L11),
+           LABEL L13))))),
+      CONST 0)))))
+_______________________________________________________
+Now running ./testcases/test13.tig
+./testcases/test13.tig:3.2: Relational operator applied on wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  CONST 0)
+_______________________________________________________
+Now running ./testcases/test14.tig
+./testcases/test14.tig:12.9: Relational operator applied on wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        NAME L11),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 0),
+        TEMP t128)))),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t127,
+        CONST -8)),
+      CALL(
+       NAME initArray,
+        CONST 0,
+        CONST 3,
+        CONST 0)),
+     ESEQ(
+      SEQ(
+       EXP(
+        CONST 0),
+       SEQ(
+        LABEL L12,
+        SEQ(
+         EXP(
+          CONST 3),
+         SEQ(
+          JUMP(
+           NAME L14),
+          SEQ(
+           LABEL L13,
+           SEQ(
+            EXP(
+             CONST 4),
+            LABEL L14)))))),
+      CONST 0)))))
+_______________________________________________________
+Now running ./testcases/test15.tig
+./testcases/test15.tig:3.3: Invalid `then` statement: must produce no value
+Parsing successful!
+
+Intermediate code for this program:
+ SEQ(
+  EXP(
+   CONST 20),
+  SEQ(
+   LABEL L11,
+   SEQ(
+    EXP(
+     CONST 3),
+    SEQ(
+     LABEL L12,
+     LABEL L13))))
+_______________________________________________________
+Now running ./testcases/test16.tig
+./testcases/test16.tig:Illegal loop in a declaration
+./testcases/test16.tig:9.1: Unknown type of a
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   NAME L11))
+_______________________________________________________
+Now running ./testcases/test17.tig
+./testcases/test17.tig:4.32: The type treelist of field children is undefined, assumed int
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 0),
+    ESEQ(
+     EXP(
+      CONST 0),
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4))))))
+_______________________________________________________
+Now running ./testcases/test18.tig
+./testcases/test18.tig:5.16: There are no functions named do_nothing2
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       ESEQ(
+        EXP(
+         CONST 0),
+        CONST 0))),
+     CONST 0)),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 0),
+    ESEQ(
+     EXP(
+      ESEQ(
+       SEQ(
+        LABEL L12,
+        EXP(
+         ESEQ(
+          EXP(
+           CALL(
+            NAME L11,
+             TEMP t127,
+             CONST 0,
+             NAME L13)),
+          NAME L14))),
+       CONST 0)),
+     CALL(
+      NAME L11,
+       TEMP t127,
+       CONST 0,
+       NAME L15)))))
+_______________________________________________________
+Now running ./testcases/test19.tig
+./testcases/test19.tig:8.17: undefined variable a
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       ESEQ(
+        EXP(
+         CALL(
+          NAME L12,
+           TEMP t127,
+           BINOP(PLUS,
+            CONST 0,
+            CONST 1))),
+        CONST 0))),
+     ESEQ(
+      SEQ(
+       LABEL L12,
+       EXP(
+        ESEQ(
+         EXP(
+          CALL(
+           NAME L11,
+            TEMP t127,
+            CONST 0,
+            NAME L13)),
+         NAME L14))),
+      CONST 0))),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 0,
+     NAME L15)))
+_______________________________________________________
+Now running ./testcases/test1.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       CONST 0)),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test20.tig
+./testcases/test20.tig:3.19: undefined variable i
+Parsing successful!
+
+Intermediate code for this program:
+ SEQ(
+  LABEL L11,
+  SEQ(
+   CJUMP(GT,
+    CONST 10,
+    CONST 5,
+    L12,L13),
+   SEQ(
+    LABEL L12,
+    SEQ(
+     EXP(
+      ESEQ(
+       EXP(
+        BINOP(PLUS,
+         CONST 0,
+         CONST 1)),
+       CONST 0)),
+     SEQ(
+      JUMP(
+       NAME L11),
+      LABEL L13)))))
+_______________________________________________________
+Now running ./testcases/test21.tig
+./testcases/test21.tig:8.21: Non-integer operand
+./testcases/test21.tig:5.9: Type of function body does not agree with return type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      SEQ(
+       CJUMP(EQ,
+        CONST 0,
+        CONST 0,
+        L12,L13),
+       SEQ(
+        LABEL L12,
+        SEQ(
+         EXP(
+          CONST 1),
+         SEQ(
+          JUMP(
+           NAME L14),
+          SEQ(
+           LABEL L13,
+           SEQ(
+            EXP(
+             BINOP(TIMES,
+              CONST 0,
+              CALL(
+               NAME L11,
+                TEMP t127,
+                BINOP(MINUS,
+                 CONST 0,
+                 CONST 1)))),
+            LABEL L14))))))),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 10)))
+_______________________________________________________
+Now running ./testcases/test22.tig
+./testcases/test22.tig:7.7: undefined field selection nam
+./testcases/test22.tig:7.13: Assignment is type incorrect
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        NAME L11),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 0),
+        TEMP t128)))),
+    CONST 0)))
+_______________________________________________________
+Now running ./testcases/test23.tig
+./testcases/test23.tig:7.14: Assignment is type incorrect
+./testcases/test23.tig:8.12: Assignment is type incorrect
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        NAME L11),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 0),
+        TEMP t128)))),
+    ESEQ(
+     EXP(
+      CONST 0),
+     CONST 0))))
+_______________________________________________________
+Now running ./testcases/test24.tig
+./testcases/test24.tig:5.4: Accessing a subscript of a non-array
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   CONST 0))
+_______________________________________________________
+Now running ./testcases/test25.tig
+./testcases/test25.tig:5.4: Accessing a field in a non-record
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   CONST 0))
+_______________________________________________________
+Now running ./testcases/test26.tig
+./testcases/test26.tig:3.10: Non-integer operand
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  BINOP(PLUS,
+   CONST 3,
+   NAME L11))
+_______________________________________________________
+Now running ./testcases/test27.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    EXP(
+     ESEQ(
+      SEQ(
+       LABEL L11,
+       EXP(
+        CONST 0)),
+      CONST 0)),
+    CALL(
+     NAME L11,
+      TEMP t127,
+      CONST 2))))
+_______________________________________________________
+Now running ./testcases/test28.tig
+./testcases/test28.tig:7.11: Initialization expression of wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        NAME L11),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 0),
+        TEMP t128)))),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test29.tig
+./testcases/test29.tig:7.11: Initialization expression of wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       CONST 0)),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test2.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       CONST 0)),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test30.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       CONST 0)),
+    MEM(
+     BINOP(PLUS,
+      MEM(
+       BINOP(PLUS,
+        TEMP t127,
+        CONST -4)),
+      BINOP(TIMES,
+       CONST 2,
+       CONST 4))))))
+_______________________________________________________
+Now running ./testcases/test31.tig
+./testcases/test31.tig:3.8: Initialization expression of wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    NAME L11),
+   MEM(
+    BINOP(PLUS,
+     TEMP t127,
+     CONST -4))))
+_______________________________________________________
+Now running ./testcases/test32.tig
+./testcases/test32.tig:6.20: Initialization is not compatible with array type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       NAME L11)),
+    CONST 0)))
+_______________________________________________________
+Now running ./testcases/test33.tig
+./testcases/test33.tig:3.19: Record type undefined
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   CONST 0))
+_______________________________________________________
+Now running ./testcases/test34.tig
+./testcases/test34.tig:5.4: argument # 1 to function call is type incorrect
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CONST 0)),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     NAME L12,
+     NAME L13)))
+_______________________________________________________
+Now running ./testcases/test35.tig
+./testcases/test35.tig:5.4: argument # 1 to function call is type incorrect
+./testcases/test35.tig:5.4: Not enough arguments to function
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CONST 0)),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     NAME L12)))
+_______________________________________________________
+Now running ./testcases/test36.tig
+./testcases/test36.tig:5.4: Too many arguments to function
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CONST 0)),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 3,
+     NAME L12)))
+_______________________________________________________
+Now running ./testcases/test37.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -8)),
+     NAME L11),
+    CONST 0)))
+_______________________________________________________
+Now running ./testcases/test38.tig
+./testcases/test38.tig:5.1: Type a previously defined
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   CONST 0))
+_______________________________________________________
+Now running ./testcases/test39.tig
+./testcases/test39.tig:4.10: Function g previously defined
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L12,
+      EXP(
+       CONST 0)),
+     ESEQ(
+      SEQ(
+       LABEL L12,
+       EXP(
+        CONST 0)),
+      CONST 0))),
+   CONST 0))
+_______________________________________________________
+Now running ./testcases/test3.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        NAME L11),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 1000),
+        TEMP t128)))),
+    ESEQ(
+     MOVE(
+      MEM(
+       MEM(
+        BINOP(PLUS,
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -4)),
+         CONST 0))),
+      NAME L12),
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4))))))
+_______________________________________________________
+Now running ./testcases/test40.tig
+./testcases/test40.tig:3.10: Type of function body does not agree with return type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CONST 0)),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 2)))
+_______________________________________________________
+Now running ./testcases/test41.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    EXP(
+     CONST 0),
+    CONST 0)))
+_______________________________________________________
+Now running ./testcases/test42.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME initArray,
+       CONST 0,
+       CONST 10,
+       CONST 0)),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t127,
+        CONST -8)),
+      CALL(
+       NAME initArray,
+        CONST 0,
+        CONST 5,
+        ESEQ(
+         MOVE(
+          TEMP t128,
+          CALL(
+           NAME malloc,
+            CONST 0,
+            BINOP(TIMES,
+             CONST 4,
+             CONST 4))),
+         ESEQ(
+          MOVE(
+           MEM(
+            BINOP(PLUS,
+             TEMP t128,
+             CONST 0)),
+           NAME L11),
+          ESEQ(
+           MOVE(
+            MEM(
+             BINOP(PLUS,
+              TEMP t128,
+              CONST 4)),
+            NAME L12),
+           ESEQ(
+            MOVE(
+             MEM(
+              BINOP(PLUS,
+               TEMP t128,
+               CONST 8)),
+             CONST 0),
+            ESEQ(
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t128,
+                CONST 12)),
+              CONST 0),
+             TEMP t128))))))),
+     ESEQ(
+      MOVE(
+       MEM(
+        BINOP(PLUS,
+         TEMP t127,
+         CONST -12)),
+       CALL(
+        NAME initArray,
+         CONST 0,
+         CONST 100,
+         NAME L13)),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t127,
+          CONST -16)),
+        ESEQ(
+         MOVE(
+          TEMP t129,
+          CALL(
+           NAME malloc,
+            CONST 0,
+            BINOP(TIMES,
+             CONST 4,
+             CONST 4))),
+         ESEQ(
+          MOVE(
+           MEM(
+            BINOP(PLUS,
+             TEMP t129,
+             CONST 0)),
+           NAME L14),
+          ESEQ(
+           MOVE(
+            MEM(
+             BINOP(PLUS,
+              TEMP t129,
+              CONST 4)),
+            NAME L15),
+           ESEQ(
+            MOVE(
+             MEM(
+              BINOP(PLUS,
+               TEMP t129,
+               CONST 8)),
+             CONST 2432),
+            ESEQ(
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t129,
+                CONST 12)),
+              CONST 44),
+             TEMP t129)))))),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -20)),
+         ESEQ(
+          MOVE(
+           TEMP t130,
+           CALL(
+            NAME malloc,
+             CONST 0,
+             BINOP(TIMES,
+              CONST 2,
+              CONST 4))),
+          ESEQ(
+           MOVE(
+            MEM(
+             BINOP(PLUS,
+              TEMP t130,
+              CONST 0)),
+            NAME L16),
+           ESEQ(
+            MOVE(
+             MEM(
+              BINOP(PLUS,
+               TEMP t130,
+               CONST 4)),
+             CALL(
+              NAME initArray,
+               CONST 0,
+               CONST 3,
+               CONST 1900)),
+            TEMP t130)))),
+        ESEQ(
+         MOVE(
+          MEM(
+           MEM(
+            BINOP(PLUS,
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4)),
+             BINOP(TIMES,
+              CONST 0,
+              CONST 4)))),
+          CONST 1),
+         ESEQ(
+          MOVE(
+           MEM(
+            MEM(
+             BINOP(PLUS,
+              MEM(
+               BINOP(PLUS,
+                TEMP t127,
+                CONST -4)),
+              BINOP(TIMES,
+               CONST 9,
+               CONST 4)))),
+           CONST 3),
+          ESEQ(
+           MOVE(
+            MEM(
+             MEM(
+              BINOP(PLUS,
+               MEM(
+                BINOP(PLUS,
+                 MEM(
+                  BINOP(PLUS,
+                   TEMP t127,
+                   CONST -8)),
+                 BINOP(TIMES,
+                  CONST 3,
+                  CONST 4))),
+               CONST 0))),
+            NAME L17),
+           ESEQ(
+            MOVE(
+             MEM(
+              MEM(
+               BINOP(PLUS,
+                MEM(
+                 BINOP(PLUS,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t127,
+                    CONST -8)),
+                  BINOP(TIMES,
+                   CONST 1,
+                   CONST 4))),
+                CONST 12))),
+             CONST 23),
+            ESEQ(
+             MOVE(
+              MEM(
+               MEM(
+                BINOP(PLUS,
+                 MEM(
+                  BINOP(PLUS,
+                   TEMP t127,
+                   CONST -12)),
+                 BINOP(TIMES,
+                  CONST 34,
+                  CONST 4)))),
+              NAME L18),
+             ESEQ(
+              MOVE(
+               MEM(
+                MEM(
+                 BINOP(PLUS,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t127,
+                    CONST -16)),
+                  CONST 0))),
+               NAME L19),
+              ESEQ(
+               MOVE(
+                MEM(
+                 MEM(
+                  BINOP(PLUS,
+                   MEM(
+                    BINOP(PLUS,
+                     MEM(
+                      BINOP(PLUS,
+                       TEMP t127,
+                       CONST -20)),
+                     CONST 4)),
+                   BINOP(TIMES,
+                    CONST 0,
+                    CONST 4)))),
+                CONST 2323),
+               ESEQ(
+                MOVE(
+                 MEM(
+                  MEM(
+                   BINOP(PLUS,
+                    MEM(
+                     BINOP(PLUS,
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t127,
+                        CONST -20)),
+                      CONST 4)),
+                    BINOP(TIMES,
+                     CONST 2,
+                     CONST 4)))),
+                 CONST 2323),
+                CONST 0)))))))))))))))
+_______________________________________________________
+Now running ./testcases/test43.tig
+./testcases/test43.tig:6.4: Non-integer operand
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 0),
+   BINOP(PLUS,
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 3)))
+_______________________________________________________
+Now running ./testcases/test44.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 0),
+    ESEQ(
+     MOVE(
+      MEM(
+       MEM(
+        BINOP(PLUS,
+         TEMP t127,
+         CONST -4))),
+      CONST 0),
+     CONST 0))))
+_______________________________________________________
+Now running ./testcases/test45.tig
+./testcases/test45.tig:5.9: Init expressions cannot be NIL. Variable assumed int
+./testcases/test45.tig:5.9: Initialization expression of wrong type
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 0),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test46.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 0),
+    ESEQ(
+     EXP(
+      ESEQ(
+       MOVE(
+        TEMP t128,
+        CONST 1),
+       ESEQ(
+        CJUMP(EQ,
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -4)),
+         CONST 0,
+         L11,L12),
+        ESEQ(
+         LABEL L12,
+         ESEQ(
+          MOVE(
+           TEMP t128,
+           CONST 0),
+          ESEQ(
+           LABEL L11,
+           TEMP t128)))))),
+     ESEQ(
+      MOVE(
+       TEMP t129,
+       CONST 1),
+      ESEQ(
+       CJUMP(NE,
+        MEM(
+         BINOP(PLUS,
+          TEMP t127,
+          CONST -4)),
+        CONST 0,
+        L13,L14),
+       ESEQ(
+        LABEL L14,
+        ESEQ(
+         MOVE(
+          TEMP t129,
+          CONST 0),
+         ESEQ(
+          LABEL L13,
+          TEMP t129)))))))))
+_______________________________________________________
+Now running ./testcases/test47.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CONST 4),
+    ESEQ(
+     EXP(
+      CONST 0),
+     CONST 0))))
+_______________________________________________________
+Now running ./testcases/test48.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CONST 0)),
+     CONST 0)),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     EXP(
+      ESEQ(
+       SEQ(
+        LABEL L12,
+        EXP(
+         CONST 0)),
+       CONST 0)),
+     CONST 0))))
+_______________________________________________________
+Now running ./testcases/test49.tig
+./testcases/test49.tig:5.18: syntax error
+_______________________________________________________
+Now running ./testcases/test4.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      SEQ(
+       CJUMP(EQ,
+        CONST 0,
+        CONST 0,
+        L12,L13),
+       SEQ(
+        LABEL L12,
+        SEQ(
+         EXP(
+          CONST 1),
+         SEQ(
+          JUMP(
+           NAME L14),
+          SEQ(
+           LABEL L13,
+           SEQ(
+            EXP(
+             BINOP(TIMES,
+              CONST 0,
+              CALL(
+               NAME L11,
+                TEMP t127,
+                BINOP(MINUS,
+                 CONST 0,
+                 CONST 1)))),
+            LABEL L14))))))),
+     CONST 0)),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 10)))
+_______________________________________________________
+Now running ./testcases/test5.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     ESEQ(
+      MOVE(
+       TEMP t128,
+       CALL(
+        NAME malloc,
+         CONST 0,
+         BINOP(TIMES,
+          CONST 2,
+          CONST 4))),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t128,
+          CONST 0)),
+        CONST 0),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t128,
+           CONST 4)),
+         CONST 0),
+        TEMP t128)))),
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)))))
+_______________________________________________________
+Now running ./testcases/test6.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       CALL(
+        NAME L12,
+         TEMP t127,
+         BINOP(PLUS,
+          CONST 0,
+          CONST 1)))),
+     ESEQ(
+      SEQ(
+       LABEL L12,
+       EXP(
+        CALL(
+         NAME L11,
+          TEMP t127,
+          CONST 0,
+          NAME L13))),
+      CONST 0))),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 0,
+     NAME L14)))
+_______________________________________________________
+Now running ./testcases/test7.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     SEQ(
+      LABEL L11,
+      EXP(
+       ESEQ(
+        EXP(
+         CALL(
+          NAME L12,
+           TEMP t127,
+           BINOP(PLUS,
+            CONST 0,
+            CONST 1))),
+        CONST 0))),
+     ESEQ(
+      SEQ(
+       LABEL L12,
+       EXP(
+        ESEQ(
+         EXP(
+          CALL(
+           NAME L11,
+            TEMP t127,
+            CONST 0,
+            NAME L13)),
+         NAME L14))),
+      CONST 0))),
+   CALL(
+    NAME L11,
+     TEMP t127,
+     CONST 0,
+     NAME L15)))
+_______________________________________________________
+Now running ./testcases/test8.tig
+Parsing successful!
+
+Intermediate code for this program:
+ SEQ(
+  CJUMP(GT,
+   CONST 10,
+   CONST 20,
+   L11,L12),
+  SEQ(
+   LABEL L11,
+   SEQ(
+    EXP(
+     CONST 30),
+    SEQ(
+     JUMP(
+      NAME L13),
+     SEQ(
+      LABEL L12,
+      SEQ(
+       EXP(
+        CONST 40),
+       LABEL L13))))))
+_______________________________________________________
+Now running ./testcases/test9.tig
+./testcases/test9.tig:3.17: Types of then and else do not match
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  CONST 0)
+_______________________________________________________
+Now running ./testcases/merge.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   EXP(
+    CONST 0),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t127,
+       CONST -4)),
+     CALL(
+      NAME L2,
+       MEM(
+        TEMP t127))),
+    ESEQ(
+     EXP(
+      ESEQ(
+       SEQ(
+        LABEL L11,
+        EXP(
+         ESEQ(
+          MOVE(
+           MEM(
+            BINOP(PLUS,
+             TEMP t127,
+             CONST -8)),
+           CONST 0),
+          ESEQ(
+           EXP(
+            ESEQ(
+             SEQ(
+              LABEL L12,
+              SEQ(
+               CJUMP(GE,
+                CALL(
+                 NAME L3,
+                  MEM(
+                   TEMP t127),
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t127,
+                    CONST -4))),
+                CALL(
+                 NAME L3,
+                  MEM(
+                   TEMP t127),
+                  NAME L14),
+                L16,L17),
+               SEQ(
+                LABEL L16,
+                SEQ(
+                 EXP(
+                  ESEQ(
+                   MOVE(
+                    TEMP t128,
+                    CONST 1),
+                   ESEQ(
+                    CJUMP(LE,
+                     CALL(
+                      NAME L3,
+                       MEM(
+                        TEMP t127),
+                       MEM(
+                        BINOP(PLUS,
+                         TEMP t127,
+                         CONST -4))),
+                     CALL(
+                      NAME L3,
+                       MEM(
+                        TEMP t127),
+                       NAME L15),
+                     L19,L20),
+                    ESEQ(
+                     LABEL L20,
+                     ESEQ(
+                      MOVE(
+                       TEMP t128,
+                       CONST 0),
+                      ESEQ(
+                       LABEL L19,
+                       TEMP t128)))))),
+                 SEQ(
+                  JUMP(
+                   NAME L18),
+                  SEQ(
+                   LABEL L17,
+                   SEQ(
+                    EXP(
+                     CONST 0),
+                    LABEL L18))))))),
+             ESEQ(
+              SEQ(
+               LABEL L13,
+               SEQ(
+                LABEL L28,
+                SEQ(
+                 SEQ(
+                  CJUMP(EQ,
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t127,
+                     CONST -4)),
+                   NAME L21,
+                   L23,L24),
+                  SEQ(
+                   LABEL L23,
+                   SEQ(
+                    EXP(
+                     CONST 1),
+                    SEQ(
+                     JUMP(
+                      NAME L25),
+                     SEQ(
+                      LABEL L24,
+                      SEQ(
+                       EXP(
+                        ESEQ(
+                         MOVE(
+                          TEMP t129,
+                          CONST 1),
+                         ESEQ(
+                          CJUMP(EQ,
+                           MEM(
+                            BINOP(PLUS,
+                             TEMP t127,
+                             CONST -4)),
+                           NAME L22,
+                           L26,L27),
+                          ESEQ(
+                           LABEL L27,
+                           ESEQ(
+                            MOVE(
+                             TEMP t129,
+                             CONST 0),
+                            ESEQ(
+                             LABEL L26,
+                             TEMP t129)))))),
+                       LABEL L25)))))),
+                 SEQ(
+                  LABEL L29,
+                  SEQ(
+                   MOVE(
+                    MEM(
+                     MEM(
+                      BINOP(PLUS,
+                       TEMP t127,
+                       CONST -4))),
+                    CALL(
+                     NAME L2,
+                      MEM(
+                       TEMP t127))),
+                   SEQ(
+                    JUMP(
+                     NAME L28),
+                    LABEL L30)))))),
+              CONST 0))),
+           ESEQ(
+            EXP(
+             CALL(
+              NAME L13,
+               TEMP t127)),
+            ESEQ(
+             MOVE(
+              MEM(
+               MEM(
+                BINOP(PLUS,
+                 CONST 0,
+                 CONST 0))),
+              CALL(
+               NAME L12,
+                TEMP t127,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t127,
+                  CONST -4)))),
+             ESEQ(
+              SEQ(
+               LABEL L32,
+               SEQ(
+                EXP(
+                 CALL(
+                  NAME L12,
+                   TEMP t127,
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t127,
+                     CONST -4)))),
+                SEQ(
+                 LABEL L33,
+                 SEQ(
+                  EXP(
+                   ESEQ(
+                    MOVE(
+                     MEM(
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t127,
+                        CONST -8))),
+                     BINOP(MINUS,
+                      BINOP(PLUS,
+                       BINOP(TIMES,
+                        MEM(
+                         BINOP(PLUS,
+                          TEMP t127,
+                          CONST -8)),
+                        CONST 10),
+                       CALL(
+                        NAME L3,
+                         MEM(
+                          TEMP t127),
+                         MEM(
+                          BINOP(PLUS,
+                           TEMP t127,
+                           CONST -4)))),
+                      CALL(
+                       NAME L3,
+                        MEM(
+                         TEMP t127),
+                        NAME L31))),
+                    ESEQ(
+                     MOVE(
+                      MEM(
+                       MEM(
+                        BINOP(PLUS,
+                         TEMP t127,
+                         CONST -4))),
+                      CALL(
+                       NAME L2,
+                        MEM(
+                         TEMP t127))),
+                     CONST 0))),
+                  SEQ(
+                   JUMP(
+                    NAME L32),
+                   LABEL L34))))),
+              MEM(
+               BINOP(PLUS,
+                TEMP t127,
+                CONST -8))))))))),
+       CONST 0)),
+     ESEQ(
+      EXP(
+       CONST 0),
+      ESEQ(
+       EXP(
+        ESEQ(
+         SEQ(
+          LABEL L35,
+          EXP(
+           ESEQ(
+            MOVE(
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -12)),
+             ESEQ(
+              MOVE(
+               TEMP t130,
+               CALL(
+                NAME malloc,
+                 CONST 0,
+                 BINOP(TIMES,
+                  CONST 1,
+                  CONST 4))),
+              ESEQ(
+               MOVE(
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t130,
+                  CONST 0)),
+                CONST 0),
+               TEMP t130))),
+            ESEQ(
+             MOVE(
+              MEM(
+               BINOP(PLUS,
+                TEMP t127,
+                CONST -16)),
+              CALL(
+               NAME L11,
+                TEMP t127,
+                MEM(
+                 BINOP(PLUS,
+                  TEMP t127,
+                  CONST -12)))),
+             ESEQ(
+              SEQ(
+               EXP(
+                MEM(
+                 BINOP(PLUS,
+                  MEM(
+                   BINOP(PLUS,
+                    TEMP t127,
+                    CONST -12)),
+                  CONST 0))),
+               SEQ(
+                LABEL L39,
+                SEQ(
+                 EXP(
+                  ESEQ(
+                   MOVE(
+                    TEMP t131,
+                    CALL(
+                     NAME malloc,
+                      CONST 0,
+                      BINOP(TIMES,
+                       CONST 2,
+                       CONST 4))),
+                   ESEQ(
+                    MOVE(
+                     MEM(
+                      BINOP(PLUS,
+                       TEMP t131,
+                       CONST 0)),
+                     MEM(
+                      BINOP(PLUS,
+                       TEMP t127,
+                       CONST -16))),
+                    ESEQ(
+                     MOVE(
+                      MEM(
+                       BINOP(PLUS,
+                        TEMP t131,
+                        CONST 4)),
+                      CALL(
+                       NAME L35,
+                        TEMP t127)),
+                     TEMP t131)))),
+                 SEQ(
+                  JUMP(
+                   NAME L41),
+                  SEQ(
+                   LABEL L40,
+                   SEQ(
+                    EXP(
+                     CONST 0),
+                    LABEL L41)))))),
+              CONST 0))))),
+         ESEQ(
+          SEQ(
+           LABEL L36,
+           SEQ(
+            CJUMP(EQ,
+             CONST 0,
+             CONST 0,
+             L48,L49),
+            SEQ(
+             LABEL L48,
+             SEQ(
+              EXP(
+               CONST 0),
+              SEQ(
+               JUMP(
+                NAME L50),
+               SEQ(
+                LABEL L49,
+                SEQ(
+                 SEQ(
+                  CJUMP(EQ,
+                   CONST 0,
+                   CONST 0,
+                   L45,L46),
+                  SEQ(
+                   LABEL L45,
+                   SEQ(
+                    EXP(
+                     CONST 0),
+                    SEQ(
+                     JUMP(
+                      NAME L47),
+                     SEQ(
+                      LABEL L46,
+                      SEQ(
+                       SEQ(
+                        CJUMP(LT,
+                         MEM(
+                          BINOP(PLUS,
+                           CONST 0,
+                           CONST 0)),
+                         MEM(
+                          BINOP(PLUS,
+                           CONST 0,
+                           CONST 0)),
+                         L42,L43),
+                        SEQ(
+                         LABEL L42,
+                         SEQ(
+                          EXP(
+                           ESEQ(
+                            MOVE(
+                             TEMP t132,
+                             CALL(
+                              NAME malloc,
+                               CONST 0,
+                               BINOP(TIMES,
+                                CONST 2,
+                                CONST 4))),
+                            ESEQ(
+                             MOVE(
+                              MEM(
+                               BINOP(PLUS,
+                                TEMP t132,
+                                CONST 0)),
+                              MEM(
+                               BINOP(PLUS,
+                                CONST 0,
+                                CONST 0))),
+                             ESEQ(
+                              MOVE(
+                               MEM(
+                                BINOP(PLUS,
+                                 TEMP t132,
+                                 CONST 4)),
+                               CALL(
+                                NAME L36,
+                                 TEMP t127,
+                                 MEM(
+                                  BINOP(PLUS,
+                                   CONST 0,
+                                   CONST 4)),
+                                 CONST 0)),
+                              TEMP t132)))),
+                          SEQ(
+                           JUMP(
+                            NAME L44),
+                           SEQ(
+                            LABEL L43,
+                            SEQ(
+                             EXP(
+                              ESEQ(
+                               MOVE(
+                                TEMP t133,
+                                CALL(
+                                 NAME malloc,
+                                  CONST 0,
+                                  BINOP(TIMES,
+                                   CONST 2,
+                                   CONST 4))),
+                               ESEQ(
+                                MOVE(
+                                 MEM(
+                                  BINOP(PLUS,
+                                   TEMP t133,
+                                   CONST 0)),
+                                 MEM(
+                                  BINOP(PLUS,
+                                   CONST 0,
+                                   CONST 0))),
+                                ESEQ(
+                                 MOVE(
+                                  MEM(
+                                   BINOP(PLUS,
+                                    TEMP t133,
+                                    CONST 4)),
+                                  CALL(
+                                   NAME L36,
+                                    TEMP t127,
+                                    CONST 0,
+                                    MEM(
+                                     BINOP(PLUS,
+                                      CONST 0,
+                                      CONST 4)))),
+                                 TEMP t133)))),
+                             LABEL L44)))))),
+                       LABEL L47)))))),
+                 LABEL L50))))))),
+          ESEQ(
+           SEQ(
+            LABEL L37,
+            EXP(
+             ESEQ(
+              EXP(
+               ESEQ(
+                SEQ(
+                 LABEL L51,
+                 SEQ(
+                  CJUMP(GT,
+                   CONST 0,
+                   CONST 0,
+                   L53,L54),
+                  SEQ(
+                   LABEL L53,
+                   SEQ(
+                    EXP(
+                     ESEQ(
+                      EXP(
+                       CALL(
+                        NAME L51,
+                         TEMP t127,
+                         BINOP(DIVIDE,
+                          CONST 0,
+                          CONST 10))),
+                      CALL(
+                       NAME L0,
+                        MEM(
+                         TEMP t127),
+                        CALL(
+                         NAME L4,
+                          MEM(
+                           TEMP t127),
+                          BINOP(PLUS,
+                           BINOP(MINUS,
+                            CONST 0,
+                            BINOP(TIMES,
+                             BINOP(DIVIDE,
+                              CONST 0,
+                              CONST 10),
+                             CONST 10)),
+                           CALL(
+                            NAME L3,
+                             MEM(
+                              TEMP t127),
+                             NAME L52)))))),
+                    SEQ(
+                     LABEL L54,
+                     LABEL L55))))),
+                CONST 0)),
+              ESEQ(
+               SEQ(
+                CJUMP(LT,
+                 CONST 0,
+                 CONST 0,
+                 L61,L62),
+                SEQ(
+                 LABEL L61,
+                 SEQ(
+                  EXP(
+                   ESEQ(
+                    EXP(
+                     CALL(
+                      NAME L0,
+                       MEM(
+                        TEMP t127),
+                       NAME L56)),
+                    CALL(
+                     NAME L51,
+                      TEMP t127,
+                      BINOP(MINUS,
+                       CONST 0,
+                       CONST 0)))),
+                  SEQ(
+                   JUMP(
+                    NAME L63),
+                   SEQ(
+                    LABEL L62,
+                    SEQ(
+                     SEQ(
+                      CJUMP(GT,
+                       CONST 0,
+                       CONST 0,
+                       L58,L59),
+                      SEQ(
+                       LABEL L58,
+                       SEQ(
+                        EXP(
+                         CALL(
+                          NAME L51,
+                           TEMP t127,
+                           CONST 0)),
+                        SEQ(
+                         JUMP(
+                          NAME L60),
+                         SEQ(
+                          LABEL L59,
+                          SEQ(
+                           EXP(
+                            CALL(
+                             NAME L0,
+                              MEM(
+                               TEMP t127),
+                              NAME L57)),
+                           LABEL L60)))))),
+                     LABEL L63)))))),
+               CONST 0)))),
+           ESEQ(
+            SEQ(
+             LABEL L38,
+             SEQ(
+              CJUMP(EQ,
+               CONST 0,
+               CONST 0,
+               L66,L67),
+              SEQ(
+               LABEL L66,
+               SEQ(
+                EXP(
+                 CALL(
+                  NAME L0,
+                   MEM(
+                    TEMP t127),
+                   NAME L64)),
+                SEQ(
+                 JUMP(
+                  NAME L68),
+                 SEQ(
+                  LABEL L67,
+                  SEQ(
+                   EXP(
+                    ESEQ(
+                     EXP(
+                      CALL(
+                       NAME L37,
+                        TEMP t127,
+                        MEM(
+                         BINOP(PLUS,
+                          CONST 0,
+                          CONST 0)))),
+                     ESEQ(
+                      EXP(
+                       CALL(
+                        NAME L0,
+                         MEM(
+                          TEMP t127),
+                         NAME L65)),
+                      CALL(
+                       NAME L38,
+                        TEMP t127,
+                        MEM(
+                         BINOP(PLUS,
+                          CONST 0,
+                          CONST 4)))))),
+                   LABEL L68))))))),
+            CONST 0))))),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -20)),
+         CALL(
+          NAME L35,
+           TEMP t127)),
+        ESEQ(
+         MOVE(
+          MEM(
+           BINOP(PLUS,
+            TEMP t127,
+            CONST -24)),
+          ESEQ(
+           MOVE(
+            MEM(
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4))),
+            CALL(
+             NAME L2,
+              MEM(
+               TEMP t127))),
+           CALL(
+            NAME L35,
+             TEMP t127))),
+         CALL(
+          NAME L38,
+           TEMP t127,
+           CALL(
+            NAME L36,
+             TEMP t127,
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -20)),
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -24))))))))))))
+_______________________________________________________
+Now running ./testcases/queens.tig
+Parsing successful!
+
+Intermediate code for this program:
+ EXP(
+  ESEQ(
+   MOVE(
+    MEM(
+     BINOP(PLUS,
+      TEMP t127,
+      CONST -4)),
+    CONST 8),
+   ESEQ(
+    EXP(
+     CONST 0),
+    ESEQ(
+     MOVE(
+      MEM(
+       BINOP(PLUS,
+        TEMP t127,
+        CONST -8)),
+      CALL(
+       NAME initArray,
+        CONST 0,
+        MEM(
+         BINOP(PLUS,
+          TEMP t127,
+          CONST -4)),
+        CONST 0)),
+     ESEQ(
+      MOVE(
+       MEM(
+        BINOP(PLUS,
+         TEMP t127,
+         CONST -12)),
+       CALL(
+        NAME initArray,
+         CONST 0,
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -4)),
+         CONST 0)),
+      ESEQ(
+       MOVE(
+        MEM(
+         BINOP(PLUS,
+          TEMP t127,
+          CONST -16)),
+        CALL(
+         NAME initArray,
+          CONST 0,
+          BINOP(MINUS,
+           BINOP(PLUS,
+            MEM(
+             BINOP(PLUS,
+              TEMP t127,
+              CONST -4)),
+            MEM(
+             BINOP(PLUS,
+              TEMP t127,
+              CONST -4))),
+           CONST 1),
+          CONST 0)),
+       ESEQ(
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t127,
+           CONST -20)),
+         CALL(
+          NAME initArray,
+           CONST 0,
+           BINOP(MINUS,
+            BINOP(PLUS,
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4)),
+             MEM(
+              BINOP(PLUS,
+               TEMP t127,
+               CONST -4))),
+            CONST 1),
+           CONST 0)),
+        ESEQ(
+         EXP(
+          ESEQ(
+           SEQ(
+            LABEL L11,
+            EXP(
+             ESEQ(
+              EXP(
+               ESEQ(
+                MOVE(
+                 TEMP t130,
+                 CONST 0),
+                ESEQ(
+                 MOVE(
+                  TEMP t131,
+                  BINOP(MINUS,
+                   MEM(
+                    BINOP(PLUS,
+                     TEMP t127,
+                     CONST -4)),
+                   CONST 1)),
+                 ESEQ(
+                  SEQ(
+                   LABEL L22,
+                   SEQ(
+                    CJUMP(LE,
+                     TEMP t130,
+                     TEMP t131,
+                     L23,L24),
+                    SEQ(
+                     LABEL L23,
+                     SEQ(
+                      EXP(
+                       ESEQ(
+                        EXP(
+                         ESEQ(
+                          EXP(
+                           ESEQ(
+                            MOVE(
+                             TEMP t128,
+                             CONST 0),
+                            ESEQ(
+                             MOVE(
+                              TEMP t129,
+                              BINOP(MINUS,
+                               MEM(
+                                BINOP(PLUS,
+                                 TEMP t127,
+                                 CONST -4)),
+                               CONST 1)),
+                             ESEQ(
+                              SEQ(
+                               LABEL L18,
+                               SEQ(
+                                CJUMP(LE,
+                                 TEMP t128,
+                                 TEMP t129,
+                                 L19,L20),
+                                SEQ(
+                                 LABEL L19,
+                                 SEQ(
+                                  EXP(
+                                   ESEQ(
+                                    EXP(
+                                     CALL(
+                                      NAME L0,
+                                       MEM(
+                                        TEMP t127),
+                                       ESEQ(
+                                        SEQ(
+                                         CJUMP(EQ,
+                                          MEM(
+                                           BINOP(PLUS,
+                                            MEM(
+                                             BINOP(PLUS,
+                                              TEMP t127,
+                                              CONST -12)),
+                                            BINOP(TIMES,
+                                             MEM(
+                                              BINOP(PLUS,
+                                               TEMP t127,
+                                               CONST -24)),
+                                             CONST 4))),
+                                          MEM(
+                                           BINOP(PLUS,
+                                            TEMP t127,
+                                            CONST -28)),
+                                          L15,L16),
+                                         SEQ(
+                                          LABEL L15,
+                                          SEQ(
+                                           EXP(
+                                            NAME L13),
+                                           SEQ(
+                                            JUMP(
+                                             NAME L17),
+                                            SEQ(
+                                             LABEL L16,
+                                             SEQ(
+                                              EXP(
+                                               NAME L14),
+                                              LABEL L17)))))),
+                                        CONST 0))),
+                                    BINOP(PLUS,
+                                     TEMP t128,
+                                     CONST 1))),
+                                  SEQ(
+                                   JUMP(
+                                    NAME L18),
+                                   LABEL L20))))),
+                              CONST 0)))),
+                          CALL(
+                           NAME L0,
+                            MEM(
+                             TEMP t127),
+                            NAME L21))),
+                        BINOP(PLUS,
+                         TEMP t130,
+                         CONST 1))),
+                      SEQ(
+                       JUMP(
+                        NAME L22),
+                       LABEL L24))))),
+                  CONST 0)))),
+              CALL(
+               NAME L0,
+                MEM(
+                 TEMP t127),
+                NAME L25)))),
+           ESEQ(
+            SEQ(
+             LABEL L12,
+             SEQ(
+              CJUMP(EQ,
+               CONST 0,
+               MEM(
+                BINOP(PLUS,
+                 TEMP t127,
+                 CONST -4)),
+               L42,L43),
+              SEQ(
+               LABEL L42,
+               SEQ(
+                EXP(
+                 CALL(
+                  NAME L11,
+                   TEMP t127)),
+                SEQ(
+                 JUMP(
+                  NAME L44),
+                 SEQ(
+                  LABEL L43,
+                  SEQ(
+                   EXP(
+                    ESEQ(
+                     MOVE(
+                      TEMP t134,
+                      CONST 0),
+                     ESEQ(
+                      MOVE(
+                       TEMP t135,
+                       BINOP(MINUS,
+                        MEM(
+                         BINOP(PLUS,
+                          TEMP t127,
+                          CONST -4)),
+                        CONST 1)),
+                      ESEQ(
+                       SEQ(
+                        LABEL L39,
+                        SEQ(
+                         CJUMP(LE,
+                          TEMP t134,
+                          TEMP t135,
+                          L40,L41),
+                         SEQ(
+                          LABEL L40,
+                          SEQ(
+                           EXP(
+                            ESEQ(
+                             SEQ(
+                              SEQ(
+                               SEQ(
+                                CJUMP(EQ,
+                                 MEM(
+                                  BINOP(PLUS,
+                                   MEM(
+                                    BINOP(PLUS,
+                                     TEMP t127,
+                                     CONST -8)),
+                                   BINOP(TIMES,
+                                    MEM(
+                                     BINOP(PLUS,
+                                      TEMP t127,
+                                      CONST -32)),
+                                    CONST 4))),
+                                 CONST 0,
+                                 L26,L27),
+                                SEQ(
+                                 LABEL L26,
+                                 SEQ(
+                                  EXP(
+                                   ESEQ(
+                                    MOVE(
+                                     TEMP t132,
+                                     CONST 1),
+                                    ESEQ(
+                                     CJUMP(EQ,
+                                      MEM(
+                                       BINOP(PLUS,
+                                        MEM(
+                                         BINOP(PLUS,
+                                          TEMP t127,
+                                          CONST -16)),
+                                        BINOP(TIMES,
+                                         BINOP(PLUS,
+                                          MEM(
+                                           BINOP(PLUS,
+                                            TEMP t127,
+                                            CONST -32)),
+                                          CONST 0),
+                                         CONST 4))),
+                                      CONST 0,
+                                      L29,L30),
+                                     ESEQ(
+                                      LABEL L30,
+                                      ESEQ(
+                                       MOVE(
+                                        TEMP t132,
+                                        CONST 0),
+                                       ESEQ(
+                                        LABEL L29,
+                                        TEMP t132)))))),
+                                  SEQ(
+                                   JUMP(
+                                    NAME L28),
+                                   SEQ(
+                                    LABEL L27,
+                                    SEQ(
+                                     EXP(
+                                      CONST 0),
+                                     LABEL L28)))))),
+                               SEQ(
+                                LABEL L31,
+                                SEQ(
+                                 EXP(
+                                  ESEQ(
+                                   MOVE(
+                                    TEMP t133,
+                                    CONST 1),
+                                   ESEQ(
+                                    CJUMP(EQ,
+                                     MEM(
+                                      BINOP(PLUS,
+                                       MEM(
+                                        BINOP(PLUS,
+                                         TEMP t127,
+                                         CONST -20)),
+                                       BINOP(TIMES,
+                                        BINOP(MINUS,
+                                         BINOP(PLUS,
+                                          MEM(
+                                           BINOP(PLUS,
+                                            TEMP t127,
+                                            CONST -32)),
+                                          CONST 7),
+                                         CONST 0),
+                                        CONST 4))),
+                                     CONST 0,
+                                     L34,L35),
+                                    ESEQ(
+                                     LABEL L35,
+                                     ESEQ(
+                                      MOVE(
+                                       TEMP t133,
+                                       CONST 0),
+                                      ESEQ(
+                                       LABEL L34,
+                                       TEMP t133)))))),
+                                 SEQ(
+                                  JUMP(
+                                   NAME L33),
+                                  SEQ(
+                                   LABEL L32,
+                                   SEQ(
+                                    EXP(
+                                     CONST 0),
+                                    LABEL L33)))))),
+                              SEQ(
+                               LABEL L36,
+                               SEQ(
+                                EXP(
+                                 ESEQ(
+                                  MOVE(
+                                   MEM(
+                                    MEM(
+                                     BINOP(PLUS,
+                                      MEM(
+                                       BINOP(PLUS,
+                                        TEMP t127,
+                                        CONST -8)),
+                                      BINOP(TIMES,
+                                       MEM(
+                                        BINOP(PLUS,
+                                         TEMP t127,
+                                         CONST -32)),
+                                       CONST 4)))),
+                                   CONST 1),
+                                  ESEQ(
+                                   MOVE(
+                                    MEM(
+                                     MEM(
+                                      BINOP(PLUS,
+                                       MEM(
+                                        BINOP(PLUS,
+                                         TEMP t127,
+                                         CONST -16)),
+                                       BINOP(TIMES,
+                                        BINOP(PLUS,
+                                         MEM(
+                                          BINOP(PLUS,
+                                           TEMP t127,
+                                           CONST -32)),
+                                         CONST 0),
+                                        CONST 4)))),
+                                    CONST 1),
+                                   ESEQ(
+                                    MOVE(
+                                     MEM(
+                                      MEM(
+                                       BINOP(PLUS,
+                                        MEM(
+                                         BINOP(PLUS,
+                                          TEMP t127,
+                                          CONST -20)),
+                                        BINOP(TIMES,
+                                         BINOP(MINUS,
+                                          BINOP(PLUS,
+                                           MEM(
+                                            BINOP(PLUS,
+                                             TEMP t127,
+                                             CONST -32)),
+                                           CONST 7),
+                                          CONST 0),
+                                         CONST 4)))),
+                                     CONST 1),
+                                    ESEQ(
+                                     MOVE(
+                                      MEM(
+                                       MEM(
+                                        BINOP(PLUS,
+                                         MEM(
+                                          BINOP(PLUS,
+                                           TEMP t127,
+                                           CONST -12)),
+                                         BINOP(TIMES,
+                                          CONST 0,
+                                          CONST 4)))),
+                                      MEM(
+                                       BINOP(PLUS,
+                                        TEMP t127,
+                                        CONST -32))),
+                                     ESEQ(
+                                      EXP(
+                                       CALL(
+                                        NAME L12,
+                                         TEMP t127,
+                                         BINOP(PLUS,
+                                          CONST 0,
+                                          CONST 1))),
+                                      ESEQ(
+                                       MOVE(
+                                        MEM(
+                                         MEM(
+                                          BINOP(PLUS,
+                                           MEM(
+                                            BINOP(PLUS,
+                                             TEMP t127,
+                                             CONST -8)),
+                                           BINOP(TIMES,
+                                            MEM(
+                                             BINOP(PLUS,
+                                              TEMP t127,
+                                              CONST -32)),
+                                            CONST 4)))),
+                                        CONST 0),
+                                       ESEQ(
+                                        MOVE(
+                                         MEM(
+                                          MEM(
+                                           BINOP(PLUS,
+                                            MEM(
+                                             BINOP(PLUS,
+                                              TEMP t127,
+                                              CONST -16)),
+                                            BINOP(TIMES,
+                                             BINOP(PLUS,
+                                              MEM(
+                                               BINOP(PLUS,
+                                                TEMP t127,
+                                                CONST -32)),
+                                              CONST 0),
+                                             CONST 4)))),
+                                         CONST 0),
+                                        ESEQ(
+                                         MOVE(
+                                          MEM(
+                                           MEM(
+                                            BINOP(PLUS,
+                                             MEM(
+                                              BINOP(PLUS,
+                                               TEMP t127,
+                                               CONST -20)),
+                                             BINOP(TIMES,
+                                              BINOP(MINUS,
+                                               BINOP(PLUS,
+                                                MEM(
+                                                 BINOP(PLUS,
+                                                  TEMP t127,
+                                                  CONST -32)),
+                                                CONST 7),
+                                               CONST 0),
+                                              CONST 4)))),
+                                          CONST 0),
+                                         CONST 0))))))))),
+                                SEQ(
+                                 LABEL L37,
+                                 LABEL L38)))),
+                             BINOP(PLUS,
+                              TEMP t134,
+                              CONST 1))),
+                           SEQ(
+                            JUMP(
+                             NAME L39),
+                            LABEL L41))))),
+                       CONST 0)))),
+                   LABEL L44))))))),
+            CONST 0))),
+         CALL(
+          NAME L12,
+           TEMP t127,
+           CONST 0)))))))))
+_______________________________________________________

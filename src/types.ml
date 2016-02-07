@@ -1,4 +1,5 @@
 open Symbol
+open Translate
 
 
 (** uniq is to differentiate records (and arrays) that have similar
@@ -26,8 +27,12 @@ type t =
   | NAME of Symbol.t * t option ref
 
 type typ =
-  | VarType of t (** Var Type *)
-  | FuncType of t list * t (** argumentTypes * returnType *)
+  | VarType of Translate.access * t
+  (** Var access * Var Type *)
+
+  | FuncType of Translate.level * t list * t
+  (** function's nested level * argumentTypes * returnType
+      NOTE: each level has already associated a label *)
 
 let t_to_string = function
   | INT -> "int"
@@ -39,8 +44,8 @@ let t_to_string = function
   | NAME (s, _)-> Symbol.to_string s
 
 let typ_to_string = function
-  | VarType (t) -> t_to_string t
-  | FuncType (_) -> "function"
+  | VarType (_, t) -> t_to_string t
+  | FuncType (l, _, _) -> "function" ^ (Translate.get_label l |> Temp.label_to_string )
 
 let rec record_find (lst : (Symbol.t * t) list) (sym : Symbol.t) : t option =
   match lst with

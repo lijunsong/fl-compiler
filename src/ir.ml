@@ -1,7 +1,8 @@
 (** This module defines the Intermediate Representation of the tiger
  * compiler. *)
 
-open FrameStack
+open Sexplib.Std
+open Sexplib
 
 type exp =
   | CONST of int
@@ -13,7 +14,7 @@ type exp =
   | ESEQ of stmt * exp (** evaluate stmt and then return the result of exp *)
  and stmt =
    | MOVE of exp * exp
-   | EXP of exp
+   | EXP of exp  (** evaluate e and discard the result *)
    | JUMP of exp * Temp.label list (** jump to exp, which has a possible location specified in the list *)
    | CJUMP of relop * exp * exp * Temp.label * Temp.label (** CJUMP(o, e1, e2, t, f), evaluate o(e1, e2), jump to t if true, f if false*)
    | SEQ of stmt * stmt
@@ -24,3 +25,17 @@ type exp =
  and relop =
    | EQ | NE | LT | GT | LE | GE
    | ULT | ULE | UGT | UGE
+   with sexp
+
+(** chain stmts list by SEQ *)
+let rec seq stmts : stmt = match stmts with
+  | [] -> EXP(CONST(0))
+  | hd :: [] -> hd
+  | hd :: tl ->
+     SEQ(hd, seq tl)
+
+let exp_to_string e =
+  (Sexp.to_string_hum (sexp_of_exp e))
+
+let stmt_to_string e =
+  (Sexp.to_string_hum (sexp_of_stmt e))
