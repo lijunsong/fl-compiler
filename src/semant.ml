@@ -342,18 +342,17 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
          | Some (record) -> begin
              match record with
              | Types.RECORD(lst, uniq) ->
-                let flds = List.map (fun (pos, sym, e) ->
-                               (* first see if sym is in the record type. *)
-                               match Types.record_find lst sym with
-                               | None -> raise_undef pos sym
-                               | Some (t) ->
-                                  (* 2. see if e's type matches declared type *)
-                                  let e_ir, e_t = trexp e in
-                                  if t = e_t || e_t = Types.NIL then
-                                    e_ir
-                                  else
-                                    expect_type pos (Types.t_to_string t) e_t
-                             ) fields in
+                let flds = List.map2 (fun (pos, s0, e0) (s1, expect_t) ->
+                    (* s0, e0 is the constructor, s1, expect_t is what
+                       user declared, see if they match. *)
+                    if s0 <> s1 then
+                      raise_undef pos s0
+                    else let e_ir, e_t = trexp e0 in (* check type *)
+                      if expect_t = e_t || e_t = Types.NIL then
+                        e_ir
+                      else
+                        expect_type pos (Types.t_to_string expect_t) e_t
+                  ) fields lst in
                 Translate.record flds, record
              | _ -> expect_type pos "record" record
            end
@@ -440,7 +439,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
 
 let trans_prog (e : S.exp) : expty =
   let res = trans_exp Translate.outermost Types.typeEnv Types.valEnv e in
-  Translate.debug_print ();
+  (* Translate.debug_print (); *)
   res
 
 
