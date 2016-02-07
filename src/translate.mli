@@ -1,6 +1,58 @@
 open Symbol
 
+(** This module translates Syntax to Ir.
+ *
+ * For the toplevel and each function, the translation arranges local
+ * variables and produces Ir for each expression. It also remembers
+ * all string literals and declared functions.
+ *)
+
 (** TODO: make translate a functor taking Frame as input module *)
+module type Frame = sig
+  type frame with sexp
+  type access with sexp
+
+  type frag =
+    | PROC of Ir.stmt * frame
+    | STRING of Temp.label * string
+  with sexp
+
+  (** [new_frame name formals] create a frame named l. A list of
+  bool indicates whether each formal argument escapes. *)
+  val new_frame : Temp.label -> bool list -> frame
+
+  (** retrieve the given frame's name *)
+  val get_name : frame -> Temp.label
+
+  (** retrieve the given frame's formal arguments.  *)
+  val get_formals : frame -> access list
+
+  (** [alloc_local f escape] allocate a local variable on frame [f] with
+  [escape] indicating whether the variable escapes *)
+  val alloc_local : frame -> bool -> access
+
+  val fp : Temp.temp
+
+  val rv : Temp.temp
+
+  (** the size of a word in a Frame *)
+  val word_size : int
+
+  (** [get_exp base access] given the base location of the access,
+  this function returns the IR representing that location's content *)
+  val get_exp : Ir.exp -> access -> Ir.exp
+
+  (** [external_call f args] call external function f with args *)
+  val external_call : string -> Ir.exp list -> Ir.exp
+
+  (** implement view shift. Mainly called by Translate.proc_entry_exit *)
+  val proc_entry_exit1 : frame -> Ir.stmt -> Ir.stmt
+
+  (** dump frame information for debugging *)
+  val debug_dump : frame -> unit
+end
+
+module SparcFrame : Frame
 
 (** Each nested function declared in Tiger's [let] is in a deeper
     level *)
@@ -33,7 +85,7 @@ val get_label : level -> Temp.label
   with [escape] indicating whether the variable escapes. *)
 val alloc_local : level -> bool -> access
 
-val debug_level : level -> unit
+val debug_print : unit -> unit
 
 (** The following functions provides interface to create [exp] from
     source language *)
@@ -89,3 +141,13 @@ val array : exp -> exp -> exp
 (** [prepend_stmts lst e] Prepend a list of statements [lst] to the
 given [e] *)
 val prepend_stmts : exp list -> exp -> exp
+
+(** [proc_entry_exit level fbody] remembers the [fbody] of [level] as
+    a fragment.
+
+    Call [get_result] to get all fragments.  This is the main function
+    to implement prologue and epilogue of functions
+*)
+val proc_entry_exit : level -> exp -> unit
+
+val get_result : unit -> SparcFrame.frag list

@@ -165,8 +165,10 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
        let body_ir, body_t = trans_exp level tenv venv' fbody in
        if ret_t <> body_t then
          expect_type pos (Types.t_to_string ret_t) body_t
-       else
+       else begin
+         Translate.proc_entry_exit curr_level body_ir;
          trfunc_decl curr_level tenv venv tl
+       end
   in
   let rec check_multi_def (lst : (Pos.t * Symbol.t) list) : unit =
     match lst with
@@ -414,8 +416,6 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       | S.Let (pos, decl, body) ->
          let tenv', venv', inits = trans_decl curr_level tenv venv decl in
          let body_ir, t = trans_exp curr_level tenv' venv' body in
-         Translate.debug_level curr_level;
-         Types.debug_valEnv venv';
          Translate.prepend_stmts inits body_ir, t
 
       | S.Arr (pos, typ, size, init) ->
@@ -439,7 +439,9 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
     trexp expr
 
 let trans_prog (e : S.exp) : expty =
-    trans_exp Translate.outermost Types.typeEnv Types.valEnv e
+  let res = trans_exp Translate.outermost Types.typeEnv Types.valEnv e in
+  Translate.debug_print ();
+  res
 
 
 let type_check (e : S.exp) : unit =

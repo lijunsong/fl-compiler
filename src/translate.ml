@@ -7,8 +7,13 @@ module type Frame = sig
   type frame with sexp
   type access with sexp
 
+  type frag =
+    | PROC of Ir.stmt * frame
+    | STRING of Temp.label * string
+  with sexp
+
   (** [new_frame name formals] create a frame named l. A list of
-  bool indicates whether each formal argument escapes. *)
+      bool indicates whether each formal argument escapes. *)
   val new_frame : Temp.label -> bool list -> frame
 
   (** retrieve the given frame's name *)
@@ -35,6 +40,9 @@ module type Frame = sig
   (** [external_call f args] call external function f with args *)
   val external_call : string -> Ir.exp list -> Ir.exp
 
+  (** implement view shift. Mainly called by Translate.proc_entry_exit *)
+  val proc_entry_exit1 : frame -> Ir.stmt -> Ir.stmt
+
   (** dump frame information for debugging *)
   val debug_dump : frame -> unit
 end
@@ -50,6 +58,11 @@ module SparcFrame : Frame = struct
       formals : access list;
       mutable locals : access list;
     } with sexp
+
+  type frag =
+    | PROC of Ir.stmt * frame
+    | STRING of Temp.label * string
+  with sexp
 
   let new_frame (name : Temp.label) (formals : bool list) : frame =
     { name;
@@ -84,6 +97,9 @@ module SparcFrame : Frame = struct
     | InMem(offset) ->
        Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
 
+  (** FIXME *)
+  let proc_entry_exit1 f stmt = stmt
+
   let external_call f args =
     Ir.CALL(Ir.NAME(Temp.named_label f), args)
 
@@ -111,14 +127,20 @@ let compare (a : level) (b : level) = compare a.cmp b.cmp
 (** uniq is for compare levels *)
 let uniq = ref 0
 
-(*let dummy_exp = Ex (Ir.CONST(0))*)
+(** frag_list stores seen functions and string literals *)
+let frag_list : F.frag list ref = ref []
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
 let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 
-let debug_level level =
-  Sexp.output_hum Pervasives.stdout (sexp_of_level level)
+let debug_print () =
+  print_endline "== debug Translate Fragment ==";
+  List.iter (fun frag ->
+      Sexp.output_hum Pervasives.stdout (F.sexp_of_frag frag);
+      print_endline "")
+    !frag_list;
+  print_endline "== debug end =="
 
 (** To use an IR as an Ex, call this function *)
 let unEx (exp : exp) : Ir.exp = match exp with
@@ -158,7 +180,7 @@ let outermost = { parent = None;
                   cmp = !uniq
                 }
 
-let new_level parent label formals =
+let new_level parent label formals : level =
   let fm = F.new_frame label (true :: formals) in
   incr uniq;
   { parent = Some parent; frame = fm; cmp = !uniq }
@@ -184,13 +206,21 @@ let get_static_link level : F.access =
   let fm_formals = F.get_formals level.frame in
   List.hd fm_formals
 
+(** This function add label to the given [stmt]*)
+let wrap_label (l : Temp.label) (stmt : Ir.stmt) : Ir.stmt =
+  Ir.SEQ(Ir.LABEL(l), stmt)
+
 (** The following functions provides interface to create [exp] from
     source language *)
 
 let const (i : int) : exp = Ex(Ir.CONST(i))
 
-(** FIXME *)
-let string (s : string) : exp = Ex(Ir.CONST(0))
+(** this function has side effect. It modifies the global variable frag_list *)
+let string (s : string) : exp =
+  let label = Temp.new_label ~prefix:"str" () in
+  let frag = F.STRING(label, s) in
+  frag_list := frag :: !frag_list;
+  Ex(Ir.NAME(label))
 
 (** FIXME *)
 let nil () : exp = Ex(Ir.CONST(0))
@@ -257,7 +287,7 @@ let call def_level args : exp =
   Ex(Ir.CALL(Ir.NAME(label), args_ir))
 
 (** FIXME:
-    1. is empty fields allowed?
+    1. is empty fields allowed? NO
     2. "malloc" should not be hard coded here. *)
 let record (fields : exp list) =
   let temp = Ir.TEMP(Temp.new_temp()) in
@@ -306,20 +336,20 @@ let if_cond_unit_body tst thn (els : exp option) : exp =
   let label_f = make_false_label () in
   let label_fi = make_fi_label () in
   let tst_ir = (unCx tst) label_t label_f in
-  let true_part = Ir.SEQ(Ir.LABEL(label_t),
-                         Ir.SEQ(unNx thn,
-                                Ir.SEQ(Ir.JUMP(Ir.NAME(label_fi), [label_fi]),
-                                       Ir.LABEL(label_f)))) in
+  let true_part =
+    Ir.SEQ(unNx thn, Ir.JUMP(Ir.NAME(label_fi), [label_fi]))
+    |> wrap_label label_t in
   let res = match els with
     | None ->
        Ir.SEQ(tst_ir,
               Ir.SEQ(true_part,
-                     Ir.LABEL(label_fi)))
+                     Ir.SEQ(Ir.LABEL(label_f), Ir.LABEL(label_fi))))
     | Some (e) ->
        let els_ir = unNx e in
        Ir.SEQ(tst_ir,
               Ir.SEQ(true_part,
-                     Ir.SEQ(els_ir, Ir.LABEL(label_fi)))) in
+                     Ir.SEQ(wrap_label label_f els_ir,
+                            Ir.LABEL(label_fi)))) in
   Nx(res)
 
 let if_cond_nonunit_body tst thn (els : exp option) : exp =
@@ -330,11 +360,14 @@ let if_cond_nonunit_body tst thn (els : exp option) : exp =
   let tst_ir = (unCx tst) label_t label_f in
   let true_part =
     Ir.SEQ(Ir.MOVE(Ir.TEMP(temp), unEx thn),
-           Ir.JUMP(Ir.NAME(label_fi), [label_fi])) in
+           Ir.JUMP(Ir.NAME(label_fi), [label_fi]))
+    |> wrap_label label_t
+  in
   let res = match els with
     | None -> failwith "use if_cond_unit_body to translate!"
     | Some (e) ->
-       let els_part = Ir.MOVE(Ir.TEMP(temp), unEx e) in
+      let els_part = Ir.MOVE(Ir.TEMP(temp), unEx e)
+                     |> wrap_label label_f in
        Ir.ESEQ(Ir.SEQ(tst_ir,
                       Ir.SEQ(true_part,
                              Ir.SEQ(els_part, Ir.LABEL(label_fi)))),
@@ -353,15 +386,24 @@ let while_loop tst body : exp =
   let label_body = Temp.new_label ~prefix:"while_body" () in
   let label_done = Temp.new_label ~prefix:"while_done" () in
   let tst_ir = (unCx tst) label_body label_done in
-  let body_ir = Ir.SEQ(Ir.LABEL(label_body),
-                       Ir.SEQ(unNx body,
-                              Ir.JUMP(Ir.NAME(label_tst), [label_tst]))) in
-  let res = Ir.SEQ(Ir.LABEL(label_tst),
-                   Ir.SEQ(tst_ir,
-                          Ir.SEQ(body_ir,
-                                 Ir.LABEL(label_done)))) in
+  let body_ir = Ir.SEQ(unNx body,
+                       Ir.JUMP(Ir.NAME(label_tst), [label_tst]))
+                |> wrap_label label_body in
+  let res = Ir.SEQ(tst_ir,
+                   Ir.SEQ(body_ir,
+                          Ir.LABEL(label_done)))
+            |> wrap_label label_tst in
   Nx(res)
 
 let prepend_stmts exp_lst exp : exp =
   let ir_lst = List.map (fun e -> unNx e) exp_lst in
   Nx(Ir.SEQ(Ir.seq ir_lst, unNx exp))
+
+(** The main function to implement prologue and epilogue of functions *)
+let proc_entry_exit level fbody : unit =
+  let fm = level.frame in
+  let stmt = F.proc_entry_exit1 fm (unNx fbody) in
+  frag_list := F.PROC(stmt, fm) :: !frag_list
+
+let get_result () : F.frag list =
+  !frag_list
