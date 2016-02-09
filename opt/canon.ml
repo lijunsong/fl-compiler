@@ -7,6 +7,18 @@ open Batteries
 let unreachable () = failwith "unreachable"
 
 let rec visit_stmt = function
+  | Ir.MOVE(Ir.TEMP(t), Ir.CALL(f, args)) ->
+     reorder_stmt (f :: args)
+                  (function
+                   | f' :: args' ->
+                      assert(List.length args = List.length args');
+                      Ir.MOVE(Ir.TEMP(t), Ir.CALL(f', args'))
+                   | _ -> unreachable())
+  | Ir.MOVE(Ir.TEMP(t), r) ->
+     reorder_stmt [r]
+                  (function
+                   | [r'] -> Ir.MOVE(Ir.TEMP(t), r')
+                   | _ -> unreachable() )
   | Ir.MOVE(l, r) ->
      reorder_stmt [l; r]
                   (function
@@ -31,7 +43,9 @@ let rec visit_stmt = function
      Ir.SEQ(s1', s2')
   | Ir.LABEL (_) as l -> l
 
-and visit_exp e = match e with
+and visit_exp e : Ir.stmt * Ir.exp =
+  (* Printf.printf "visit_exp: %s\n%!" (Ir.exp_to_string e); *)
+  match e with
   | Ir.CONST (_) | Ir.NAME (_) | Ir.TEMP(_) ->
      Ir.EXP(Ir.CONST(0)), e
   | Ir.BINOP (op, e1, e2) ->
@@ -43,17 +57,13 @@ and visit_exp e = match e with
                        | [e1'] -> Ir.MEM(e1')
                        | _ -> unreachable())
   | Ir.CALL (f, args) ->
-     reorder_exp (f :: args) (function
-                              | f' :: args' ->
-                                 assert(List.length args = List.length args');
-                                 Ir.CALL(f', args')
-                              | _ -> unreachable())
+     let temp = Ir.TEMP(Temp.new_temp()) in
+     let ir = Ir.ESEQ(Ir.MOVE(temp, e), temp) in
+     visit_exp ir
   | Ir.ESEQ (s0, e) ->
-     let new_seq = visit_stmt s0 in
-     reorder_exp [e] (function
-                      | [e'] ->
-                         Ir.ESEQ(new_seq, e')
-                      | _ -> unreachable ())
+     let new_s0 = visit_stmt s0 in
+     let new_s1, new_e = visit_exp e in
+     Ir.SEQ(new_s0, new_s1), new_e
 
 and reorder_stmt (children : Ir.exp list)
                  (replace : (Ir.exp list -> Ir.stmt)): Ir.stmt =
@@ -75,4 +85,4 @@ let linearize stmt : Ir.stmt list =
     | Ir.SEQ(s1, s2) -> linear s1 (linear s2 res)
     | _ -> seq :: res
   in
-  linear stmt []
+  linear (visit_stmt stmt) []
