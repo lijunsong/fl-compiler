@@ -50,6 +50,12 @@ let type_check () =
     Semant.type_check ast
   | IR(_) -> failwith "Type checker works only on tiger program or its AST."
 
+let to_canon () =
+  to_ir ();
+  match !program with
+  | IR(ir) ->
+  | _ -> failwith "unreachable"
+
 let print () =
   match !program with
   | EMPTY -> failwith "load a tiger program first!"
