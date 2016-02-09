@@ -8,6 +8,7 @@ type lang =
   | TIGER of string
   | AST of S.exp
   | IR of Translate.exp
+  | CANON of Ir.stmt list
   | EMPTY
 
 let program = ref EMPTY
@@ -27,7 +28,8 @@ let to_ast () =
     let ast = Parse.parse_string t in
     program := AST(ast)
   | AST(t) -> ()
-  | IR(_) -> failwith "Cannot convert from IR to AST"
+  | IR(_)
+    | CANON (_) -> failwith "Cannot convert from IR to AST"
 
 let to_ir () =
   match !program with
@@ -39,7 +41,7 @@ let to_ir () =
   | AST(ast) ->
     let ir, _ = Semant.trans_prog ast in
     program := IR(ir)
-  | IR(_) -> ()
+  | IR(_) | CANON (_) -> ()
 
 let type_check () =
   match !program with
@@ -48,12 +50,14 @@ let type_check () =
     Semant.type_check (Parse.parse_string t)
   | AST(ast) ->
     Semant.type_check ast
-  | IR(_) -> failwith "Type checker works only on tiger program or its AST."
+  | IR(_) | CANON (_)
+    -> failwith "Type checker works only on tiger program or its AST."
 
 let to_canon () =
   to_ir ();
   match !program with
   | IR(ir) ->
+     program := CANON(Canon.linearize (Translate.unNx ir))
   | _ -> failwith "unreachable"
 
 let print () =
@@ -64,6 +68,13 @@ let print () =
   | AST(ast) ->
     let sexp = S.sexp_of_exp ast in
     Sexp.output_hum Pervasives.stdout sexp
+  | CANON(list) ->
+     List.iter (fun stmt ->
+         let sexp = Ir.sexp_of_stmt stmt in
+         Sexp.output_hum Pervasives.stdout sexp;
+         print_string "\n";
+       )
+               list
   | IR(ir) ->
     let sexp = Translate.sexp_of_exp ir in
     Sexp.output_hum Pervasives.stdout sexp
@@ -73,6 +84,7 @@ let specs = [
   ("-load", Arg.String(load), "load a tiger program");
   ("-ast", Arg.Unit(to_ast), "convert the program to an AST");
   ("-ir", Arg.Unit(to_ir), "convert the program to ir");
+  ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");
 ]

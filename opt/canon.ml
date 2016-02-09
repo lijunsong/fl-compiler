@@ -68,3 +68,11 @@ and reorder_exp (children : Ir.exp list)
                             |> List.split in
   let exp = replace new_exp in
   Ir.seq to_prepend, exp
+
+
+let linearize stmt : Ir.stmt list =
+  let rec linear seq res = match seq with
+    | Ir.SEQ(s1, s2) -> linear s1 (linear s2 res)
+    | _ -> seq :: res
+  in
+  linear stmt []
