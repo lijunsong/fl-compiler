@@ -86,3 +86,49 @@ let linearize stmt : Ir.stmt list =
     | _ -> seq :: res
   in
   linear (visit_stmt stmt) []
+
+let basic_blocks linearized =
+  (* stmt_list: is current unprocessed stmt sequence.
+   * curr_block_rev: is current basic block; stores a list of stmt in
+   *                reversed order.
+   * result_rev: stores a list of basic blocks in reversed order
+   *
+   * NOTE: reversing the order to increasing the performance.
+   *)
+  let rec split stmt_list (curr_block_rev : Ir.stmt list) result_rev =
+    match stmt_list with
+    | [] ->
+       let result' = if curr_block_rev = [] then
+                       result_rev
+                     else
+                       (List.rev curr_block_rev) :: result_rev
+       in
+       List.rev result'
+    | stmt :: rest ->
+       begin match stmt with
+       | Ir.JUMP(_) | Ir.CJUMP(_) ->
+          (* A jump starts a new block. *)
+          let curr_block = List.rev (stmt :: curr_block_rev) in
+          split rest [] (curr_block :: result_rev)
+       | Ir.LABEL(label) ->
+          (* A label ends a block. If previous block does not
+           * end with JUMP/CJUMP, append JUMP to previous block *)
+          let not_jump = function
+            | Ir.JUMP(_) -> false
+            | Ir.CJUMP(_) -> false
+            | _ -> true in
+          (* append a jump to prev block if necessary *)
+          let append_jump =
+            if List.length curr_block_rev = 0 ||
+                 not_jump (List.hd curr_block_rev) then
+              Ir.JUMP(Ir.NAME(label), [label]) :: curr_block_rev
+            else
+              curr_block_rev
+          in
+          let prev_block = List.rev append_jump in
+          split rest [stmt] (prev_block :: result_rev)
+       | _ ->
+          split rest (stmt :: curr_block_rev) result_rev
+       end
+  in
+  split linearized [] [], Temp.new_label ~prefix:"done" ()
