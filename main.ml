@@ -9,6 +9,8 @@ type lang =
   | AST of S.exp
   | IR of Translate.exp
   | CANON of Ir.stmt list
+  | BLOCKS of Ir.stmt list list * Temp.label
+  | TRACE of Ir.stmt list
   | EMPTY
 
 let program = ref EMPTY
@@ -28,8 +30,7 @@ let to_ast () =
     let ast = Parse.parse_string t in
     program := AST(ast)
   | AST(t) -> ()
-  | IR(_)
-    | CANON (_) -> failwith "Cannot convert from IR to AST"
+  | _ -> failwith "Cannot convert from IR to what you asked."
 
 let to_ir () =
   match !program with
@@ -41,7 +42,7 @@ let to_ir () =
   | AST(ast) ->
     let ir, _ = Semant.trans_prog ast in
     program := IR(ir)
-  | IR(_) | CANON (_) -> ()
+  | _ -> ()
 
 let type_check () =
   match !program with
@@ -50,8 +51,8 @@ let type_check () =
     Semant.type_check (Parse.parse_string t)
   | AST(ast) ->
     Semant.type_check ast
-  | IR(_) | CANON (_)
-    -> failwith "Type checker works only on tiger program or its AST."
+  | _ ->
+    failwith "Type checker works only on tiger program or its AST."
 
 let to_canon () =
   to_ir ();
@@ -60,7 +61,29 @@ let to_canon () =
      program := CANON(Canon.linearize (Translate.unNx ir))
   | _ -> failwith "unreachable"
 
+let to_blocks () =
+  to_canon ();
+  match !program with
+  | CANON(ir) ->
+     let bb, label = Canon.basic_blocks ir in
+     program := BLOCKS(bb, label)
+  | _ -> failwith "unreachable"
+
+let to_trace () =
+  to_blocks ();
+  match !program with
+  | BLOCKS(ir, label) ->
+     program := TRACE(Canon.trace_schedule (ir, label))
+  | _ -> failwith "unreachable"
+
 let print () =
+  let print_ir_list list =
+     List.iter (fun stmt ->
+         let sexp = Ir.sexp_of_stmt stmt in
+         Sexp.output_hum Pervasives.stdout sexp;
+         print_string "\n";
+       ) list
+  in
   match !program with
   | EMPTY -> failwith "load a tiger program first!"
   | TIGER(t) ->
@@ -69,12 +92,13 @@ let print () =
     let sexp = S.sexp_of_exp ast in
     Sexp.output_hum Pervasives.stdout sexp
   | CANON(list) ->
-     List.iter (fun stmt ->
-         let sexp = Ir.sexp_of_stmt stmt in
-         Sexp.output_hum Pervasives.stdout sexp;
-         print_string "\n";
-       )
-               list
+     print_ir_list list
+  | BLOCKS(ir, label) ->
+     List.iter (fun lst -> print_ir_list lst;
+                        print_string "\n")
+               ir
+  | TRACE(list) ->
+     print_ir_list list
   | IR(ir) ->
     let sexp = Translate.sexp_of_exp ir in
     Sexp.output_hum Pervasives.stdout sexp
@@ -85,6 +109,7 @@ let specs = [
   ("-ast", Arg.Unit(to_ast), "convert the program to an AST");
   ("-ir", Arg.Unit(to_ir), "convert the program to ir");
   ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
+  ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");
 ]

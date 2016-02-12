@@ -165,7 +165,8 @@ let trace_schedule (basic_blocks, exit) : Ir.stmt list =
   (* [get_block_jump_info blocks] returns a hashmap mapping from
      labels to blocks that they belong to, and a list of blocks'
      starting label and jump-to labels information *)
-  let get_block_jump_info bbs : (Ir.stmt list * bool) BlockMap.t * (Temp.label * Temp.label list) list =
+  let get_block_jump_info bbs
+        : (Ir.stmt list * bool) BlockMap.t * (Temp.label * Temp.label list) list =
     (* arg bbs is basic blocks *)
     let rec get_info_iter bbs map block_jump_info = match bbs with
       | [] -> map, block_jump_info
