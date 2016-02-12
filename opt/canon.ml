@@ -138,9 +138,10 @@ let basic_blocks linearized =
 
 (** BlockMap maps from a label to the basic_block that it starts and a
     bool indicating "visited" *)
-module BlockMap : (Temp.label, Ir.stmt list * bool) = Map.Make(Temp.label)
+module BlockMap =  Temp.LabelMap
 
-let get_basic_block label (map : BlockMap.t) =
+let get_basic_block label (map : (Ir.stmt list * bool) BlockMap.t)
+    : Ir.stmt list * bool =
   if BlockMap.mem label map then
     BlockMap.find label map
   else
@@ -150,12 +151,13 @@ let get_basic_block label (map : BlockMap.t) =
     jump-to labels *)
 let get_jump_info block : Temp.label * Temp.label list =
     let block_label = match List.hd block with
-      | LABEL(l) -> l
+      | Ir.LABEL(l) -> l
       | _ -> failwith "non-label found at the start of a block"
     in
-    let jump_to = match List.last with
-      | JUMP(_, labels) -> labels
-      | CJUMP(_, _, _, t, f) -> [t; f]
+    let jump_to = match List.last block with
+      | Ir.JUMP(_, labels) -> labels
+      | Ir.CJUMP(_, _, _, t, f) -> [t; f]
+      | _ -> failwith "non-jump found at the end of a block"
     in
     block_label, jump_to
 
@@ -163,7 +165,7 @@ let trace_schedule (basic_blocks, exit) : Ir.stmt list =
   (* [get_block_jump_info blocks] returns a hashmap mapping from
      labels to blocks that they belong to, and a list of blocks'
      starting label and jump-to labels information *)
-  let get_block_jump_info bbs : BlockMap.t * (Temp.label * Temp.label list) list =
+  let get_block_jump_info bbs : (Ir.stmt list * bool) BlockMap.t * (Temp.label * Temp.label list) list =
     (* arg bbs is basic blocks *)
     let rec get_info_iter bbs map block_jump_info = match bbs with
       | [] -> map, block_jump_info
@@ -176,8 +178,8 @@ let trace_schedule (basic_blocks, exit) : Ir.stmt list =
   in
   let blockMap, jump_info = get_block_jump_info basic_blocks in
   (* This function returns traced blocks. Blocks are not flattened yet. *)
-  let rec trace_block (cur_label : Temp.label) (label_queque : Temp.label list)
-      (cur_trace_rev : Ir.stmt list list) (visited_info : BlockMap.t) : Ir.stmt list list =
+  let rec trace_block (cur_label : Temp.label) (label_queue : Temp.label list)
+      (cur_trace_rev : Ir.stmt list list) visited_info : Ir.stmt list list =
     match label_queue, get_basic_block cur_label visited_info with
     | [], (_, true) -> (* cur_label is visited already *)
       List.rev cur_trace_rev
@@ -190,6 +192,7 @@ let trace_schedule (basic_blocks, exit) : Ir.stmt list =
       let visited_info' = BlockMap.add cur_label (block, true) visited_info in
       trace_block next tl (block :: cur_trace_rev) visited_info'
   in
-  let label_queue = List.map (fun l, _ -> l) jump_info in
+  let label_queue = List.map (fun (l, _) -> l) jump_info in
   let first_label = List.hd label_queue in
-  trace_block first_label label_queue [] blockMap
+  let block_list = trace_block first_label label_queue [] blockMap in
+  List.flatten block_list
