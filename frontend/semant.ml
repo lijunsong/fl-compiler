@@ -439,7 +439,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
 
 let trans_prog (e : S.exp) : expty =
   let res = trans_exp Translate.outermost Types.typeEnv Types.valEnv e in
-  (* Translate.debug_print (); *)
+  Translate.debug_print ();
   res
 
 

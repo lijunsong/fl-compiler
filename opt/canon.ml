@@ -152,7 +152,10 @@ let get_basic_block label (map : (Ir.stmt list * bool) BlockMap.t)
 let get_jump_info block : Temp.label * Temp.label list =
     let block_label = match List.hd block with
       | Ir.LABEL(l) -> l
-      | _ -> failwith "non-label found at the start of a block"
+      | ir ->
+        failwith (Printf.sprintf
+                    "non-label %s found at the start of a block"
+                    (Ir.stmt_to_string ir))
     in
     let jump_to = match List.last block with
       | Ir.JUMP(_, labels) -> labels

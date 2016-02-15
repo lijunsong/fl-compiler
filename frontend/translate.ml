@@ -136,6 +136,7 @@ let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 
 let debug_print () =
   print_endline "== debug Translate Fragment ==";
+  print_endline ("total fragments: " ^ (string_of_int (List.length !frag_list)));
   List.iter (fun frag ->
       Sexp.output_hum Pervasives.stdout (F.sexp_of_frag frag);
       print_endline "")
