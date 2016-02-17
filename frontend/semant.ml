@@ -437,10 +437,9 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
     in
     trexp expr
 
-let trans_prog (e : S.exp) : expty =
-  let res = trans_exp Translate.outermost Types.typeEnv Types.valEnv e in
-  Translate.debug_print ();
-  res
+let trans_prog (e : S.exp) : Translate.frag list =
+  trans_exp Translate.outermost Types.typeEnv Types.valEnv e;
+  Translate.get_result()
 
 
 let type_check (e : S.exp) : unit =

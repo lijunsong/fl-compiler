@@ -7,7 +7,7 @@ open Batteries
 type lang =
   | TIGER of string
   | AST of S.exp
-  | IR of Translate.exp
+  | IR of Translate.frag list
   | CANON of Ir.stmt list
   | BLOCKS of Ir.stmt list list * Temp.label
   | TRACE of Ir.stmt list
@@ -37,8 +37,8 @@ let to_ir () =
   | EMPTY -> failwith "load a tiger program first!"
   | TIGER(t) ->
     let ast = Parse.parse_string t in
-    let ir, _ = Semant.trans_prog ast in
-    program := IR(ir)
+    let frags = Semant.trans_prog ast in
+    program := IR(frags)
   | AST(ast) ->
     let ir, _ = Semant.trans_prog ast in
     program := IR(ir)
@@ -57,7 +57,7 @@ let type_check () =
 let to_canon () =
   to_ir ();
   match !program with
-  | IR(ir) ->
+  | IR(frags) ->
      program := CANON(Canon.linearize (Translate.unNx ir))
   | _ -> failwith "unreachable"
 
@@ -94,8 +94,10 @@ let print () =
   | CANON(list) ->
      print_ir_list list
   | BLOCKS(ir, label) ->
-     List.iter (fun lst -> print_ir_list lst;
-                        print_string "\n")
+     List.iter (fun lst ->
+        print_string "block:\n";
+        print_ir_list lst;
+      )
                ir
   | TRACE(list) ->
      print_ir_list list
@@ -109,6 +111,7 @@ let specs = [
   ("-ast", Arg.Unit(to_ast), "convert the program to an AST");
   ("-ir", Arg.Unit(to_ir), "convert the program to ir");
   ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
+  ("-basicblock", Arg.Unit(to_blocks), "convert the program to basic blocks");
   ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");

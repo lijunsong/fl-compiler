@@ -95,21 +95,21 @@ let basic_blocks linearized =
    * result_rev: stores a list of basic blocks in reversed order
    *
    * NOTE: reversing the order to increasing the performance.
-   *)
+  *)
+  let done_label = Temp.new_label ~prefix:"exit" () in
   let rec split stmt_list (curr_block_rev : Ir.stmt list) result_rev =
     match stmt_list with
     | [] ->
-       let result' = if curr_block_rev = [] then
-                       result_rev
-                     else
-                       (List.rev curr_block_rev) :: result_rev
-       in
-       List.rev result'
+      let result' = if curr_block_rev = [] then
+          result_rev
+        else
+          (List.rev curr_block_rev) :: result_rev in
+      List.rev result'
     | stmt :: rest ->
        begin match stmt with
        | Ir.JUMP(_) | Ir.CJUMP(_) ->
           (* A jump starts a new block. *)
-          let curr_block = List.rev (stmt :: curr_block_rev) in
+         let curr_block = List.rev (stmt :: curr_block_rev) in
           split rest [] (curr_block :: result_rev)
        | Ir.LABEL(label) ->
           (* A label ends a block. If previous block does not
@@ -132,7 +132,8 @@ let basic_blocks linearized =
           split rest (stmt :: curr_block_rev) result_rev
        end
   in
-  split linearized [] [], Temp.new_label ~prefix:"done" ()
+  let linearized' = linearized @ [Ir.JUMP(Ir.NAME(done_label), [done_label])] in
+  split linearized' [] [], done_label
 
 (** ------ Trace ----- *)
 

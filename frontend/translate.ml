@@ -403,7 +403,8 @@ let prepend_stmts exp_lst exp : exp =
 (** The main function to implement prologue and epilogue of functions *)
 let proc_entry_exit level fbody : unit =
   let fm = level.frame in
-  let stmt = F.proc_entry_exit1 fm (unNx fbody) in
+  let body = Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
+  let stmt = F.proc_entry_exit1 fm body in
   frag_list := F.PROC(stmt, fm) :: !frag_list
 
 let get_result () : F.frag list =
