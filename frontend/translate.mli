@@ -54,6 +54,8 @@ end
 
 module SparcFrame : Frame
 
+module F = SparcFrame
+
 (** Each nested function declared in Tiger's [let] is in a deeper
     level *)
 type level
@@ -64,6 +66,8 @@ type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
+
+type frag = F.frag with sexp
 
 val unEx : exp -> Ir.exp
 
@@ -150,4 +154,4 @@ val prepend_stmts : exp list -> exp -> exp
 *)
 val proc_entry_exit : level -> exp -> unit
 
-val get_result : unit -> SparcFrame.frag list
+val get_result : unit -> frag list

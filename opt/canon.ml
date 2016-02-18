@@ -97,40 +97,28 @@ let basic_blocks linearized =
    * NOTE: reversing the order to increasing the performance.
   *)
   let done_label = Temp.new_label ~prefix:"exit" () in
+  let is_jump = function
+    | Ir.JUMP(_) | Ir.CJUMP(_) -> true
+    | _ -> false in
   let rec split stmt_list (curr_block_rev : Ir.stmt list) result_rev =
-    match stmt_list with
-    | [] ->
-      let result' = if curr_block_rev = [] then
-          result_rev
-        else
-          (List.rev curr_block_rev) :: result_rev in
-      List.rev result'
-    | stmt :: rest ->
-       begin match stmt with
-       | Ir.JUMP(_) | Ir.CJUMP(_) ->
-          (* A jump starts a new block. *)
-         let curr_block = List.rev (stmt :: curr_block_rev) in
-          split rest [] (curr_block :: result_rev)
-       | Ir.LABEL(label) ->
-          (* A label ends a block. If previous block does not
-           * end with JUMP/CJUMP, append JUMP to previous block *)
-          let not_jump = function
-            | Ir.JUMP(_) -> false
-            | Ir.CJUMP(_) -> false
-            | _ -> true in
-          (* append a jump to prev block if necessary *)
-          let append_jump =
-            if List.length curr_block_rev = 0 ||
-                 not_jump (List.hd curr_block_rev) then
-              Ir.JUMP(Ir.NAME(label), [label]) :: curr_block_rev
-            else
-              curr_block_rev
-          in
-          let prev_block = List.rev append_jump in
-          split rest [stmt] (prev_block :: result_rev)
-       | _ ->
-          split rest (stmt :: curr_block_rev) result_rev
-       end
+    match stmt_list, curr_block_rev with
+    | [], [] -> List.rev result_rev
+    | [], lst -> List.rev ((List.rev curr_block_rev) :: result_rev)
+    | stmt :: rest, lst when is_jump stmt ->
+       if lst = [] then
+         failwith "jump following an empty block. Look like a bug in irgen and basic block."
+       else
+         let block = List.rev (stmt :: lst) in
+         split rest [] (block :: result_rev)
+    | Ir.LABEL(l) :: rest, [ ] ->
+       split rest [Ir.LABEL(l)] result_rev
+    | Ir.LABEL(l) :: rest, prev :: rest' when is_jump prev ->
+       split rest [Ir.LABEL(l)] ((List.rev curr_block_rev) :: result_rev)
+    | Ir.LABEL(l) :: rest, prev :: rest' ->
+       let add_jump = Ir.JUMP(Ir.NAME(l), [l]) :: curr_block_rev in
+       split rest [Ir.LABEL(l)] ((List.rev add_jump) :: result_rev)
+    | stmt :: rest, lst ->
+       split rest (stmt :: lst) result_rev
   in
   let linearized' = linearized @ [Ir.JUMP(Ir.NAME(done_label), [done_label])] in
   split linearized' [] [], done_label
@@ -160,8 +148,8 @@ let get_jump_info block : Temp.label * Temp.label list =
     in
     let jump_to = match List.last block with
       | Ir.JUMP(_, labels) -> labels
-      | Ir.CJUMP(_, _, _, t, f) -> [t; f]
-      | _ -> failwith "non-jump found at the end of a block"
+      | Ir.CJUMP(_, _, _, t, f) -> [f; t]
+      | _ -> [] (* failwith "non-jump found at the end of a block" *)
     in
     block_label, jump_to
 
@@ -181,6 +169,10 @@ let trace_schedule (basic_blocks, exit) : Ir.stmt list =
     in
     get_info_iter bbs BlockMap.empty []
   in
+  (** FIXME: there is no opening label for the first block. Am I doing
+   * anything wrong? *)
+  let basic_blocks = (Ir.LABEL(Temp.new_label()) :: (List.hd basic_blocks)) ::
+                       (List.tl basic_blocks) in
   let blockMap, jump_info = get_block_jump_info basic_blocks in
   (* This function returns traced blocks. Blocks are not flattened yet. *)
   let rec trace_block (cur_label : Temp.label) (label_queue : Temp.label list)

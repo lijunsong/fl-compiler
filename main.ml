@@ -4,13 +4,23 @@ open Parse
 open Printf
 open Batteries
 
+type linear = Ir.stmt list
+
+type basicblocks = Ir.stmt list list
+
+type string_frags = Translate.frag list
+
+type linear_proc = linear * Translate.F.frame
+
+type bb_proc = linear list * Temp.label * Translate.F.frame
+
 type lang =
   | TIGER of string
   | AST of S.exp
   | IR of Translate.frag list
-  | CANON of Ir.stmt list
-  | BLOCKS of Ir.stmt list list * Temp.label
-  | TRACE of Ir.stmt list
+  | CANON of linear_proc list * string_frags
+  | BLOCKS of bb_proc list * string_frags
+  | TRACE of linear_proc list * string_frags
   | EMPTY
 
 let program = ref EMPTY
@@ -40,8 +50,8 @@ let to_ir () =
     let frags = Semant.trans_prog ast in
     program := IR(frags)
   | AST(ast) ->
-    let ir, _ = Semant.trans_prog ast in
-    program := IR(ir)
+    let frags = Semant.trans_prog ast in
+    program := IR(frags)
   | _ -> ()
 
 let type_check () =
@@ -58,22 +68,36 @@ let to_canon () =
   to_ir ();
   match !program with
   | IR(frags) ->
-     program := CANON(Canon.linearize (Translate.unNx ir))
+     let progs, strs = List.partition
+                         (fun frag -> match frag with
+                                   | Translate.F.PROC (_) -> true
+                                   | _ -> false) frags in
+     let canon =
+       List.map (fun frag -> match frag with
+                          | Translate.F.PROC (ir, fm) -> Canon.linearize ir, fm
+                          | Translate.F.STRING (_) -> failwith "unreachable"
+                ) progs in
+     program := CANON(canon, strs)
   | _ -> failwith "unreachable"
 
 let to_blocks () =
   to_canon ();
   match !program with
-  | CANON(ir) ->
-     let bb, label = Canon.basic_blocks ir in
-     program := BLOCKS(bb, label)
+  | CANON(ir_list, strs) ->
+     let bbs = List.map (fun (ir,fm) ->
+                   let bb, l = Canon.basic_blocks ir in
+                   bb, l, fm) ir_list in
+     program := BLOCKS(bbs, strs)
   | _ -> failwith "unreachable"
 
 let to_trace () =
   to_blocks ();
   match !program with
-  | BLOCKS(ir, label) ->
-     program := TRACE(Canon.trace_schedule (ir, label))
+  | BLOCKS(bbs, strs) ->
+     let traced = List.map (fun (bb,l,fm) ->
+                      let list = Canon.trace_schedule (bb, l) in
+                      list, fm) bbs in
+     program := TRACE(traced, strs)
   | _ -> failwith "unreachable"
 
 let print () =
@@ -84,6 +108,13 @@ let print () =
          print_string "\n";
        ) list
   in
+  let print_str_list list =
+    print_string "strings: \n";
+    List.iter (fun s ->
+        let sexp = Translate.sexp_of_frag s in
+        Sexp.output_hum Pervasives.stdout sexp;
+        print_string "\n";) list
+  in
   match !program with
   | EMPTY -> failwith "load a tiger program first!"
   | TIGER(t) ->
@@ -91,19 +122,32 @@ let print () =
   | AST(ast) ->
     let sexp = S.sexp_of_exp ast in
     Sexp.output_hum Pervasives.stdout sexp
-  | CANON(list) ->
-     print_ir_list list
-  | BLOCKS(ir, label) ->
-     List.iter (fun lst ->
-        print_string "block:\n";
-        print_ir_list lst;
-      )
-               ir
-  | TRACE(list) ->
-     print_ir_list list
-  | IR(ir) ->
-    let sexp = Translate.sexp_of_exp ir in
-    Sexp.output_hum Pervasives.stdout sexp
+  | CANON(proc_list, strs) ->
+     print_string "programs:\n";
+     List.iter (fun (ir_list, fm) ->
+         print_ir_list ir_list;
+         print_string "frames: \n";
+         Translate.F.debug_dump fm) proc_list;
+     print_str_list strs
+
+  | BLOCKS(bb_proc_list, label) ->
+     List.iter (fun (bb,l,fm) ->
+         Translate.F.debug_dump fm;
+         print_string ("label: " ^ (Temp.label_to_string l) ^ "\n");
+         List.iter (fun lst ->
+             print_string "block:\n";
+             print_ir_list lst) bb;
+      ) bb_proc_list
+  | TRACE(proc_list, strs) ->
+     List.iter (fun (ir_list, fm) ->
+         print_ir_list ir_list;
+       Translate.F.debug_dump fm) proc_list;
+     print_str_list strs
+  | IR(ir_list) ->
+     List.iter (fun ir ->
+         let sexp = Translate.sexp_of_frag ir in
+         Sexp.output_hum Pervasives.stdout sexp)
+               ir_list
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");

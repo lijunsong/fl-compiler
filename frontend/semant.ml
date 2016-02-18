@@ -438,14 +438,14 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
     trexp expr
 
 let trans_prog (e : S.exp) : Translate.frag list =
-  trans_exp Translate.outermost Types.typeEnv Types.valEnv e;
+  let body, t = trans_exp Translate.outermost Types.typeEnv Types.valEnv e in
+  Translate.proc_entry_exit Translate.outermost body;
   Translate.get_result()
 
 
 let type_check (e : S.exp) : unit =
   try
-    let (_, _) : expty = trans_prog e in
-    ()
+    ignore(trans_prog e)
   with
   | TypeError (pos, msg) ->
     printf "TypeError:%s: %s\n" (Pos.to_string pos) msg
