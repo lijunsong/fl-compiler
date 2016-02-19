@@ -117,6 +117,8 @@ let basic_blocks linearized =
     | Ir.LABEL(l) :: rest, prev :: rest' ->
        let add_jump = Ir.JUMP(Ir.NAME(l), [l]) :: curr_block_rev in
        split rest [Ir.LABEL(l)] ((List.rev add_jump) :: result_rev)
+    | stmt :: rest, [ ] -> (* here stmt can not be a label *)
+      split rest [stmt; Ir.LABEL(Temp.new_label())] result_rev
     | stmt :: rest, lst ->
        split rest (stmt :: lst) result_rev
   in
@@ -129,12 +131,11 @@ let basic_blocks linearized =
     bool indicating "visited" *)
 module BlockMap =  Temp.LabelMap
 
-let get_basic_block label (map : (Ir.stmt list * bool) BlockMap.t)
-    : Ir.stmt list * bool =
+let get_basic_block label map =
   if BlockMap.mem label map then
-    BlockMap.find label map
+    Some (BlockMap.find label map)
   else
-    failwith ("label " ^ (Temp.label_to_string label) ^ " is not found")
+    None
 
 (** [get_jump_info one_block] returns the block's starting label and
     jump-to labels *)
@@ -153,43 +154,46 @@ let get_jump_info block : Temp.label * Temp.label list =
     in
     block_label, jump_to
 
-let trace_schedule (basic_blocks, exit) : Ir.stmt list =
+let trace_schedule (basic_blocks, lexit) : Ir.stmt list =
   (* [get_block_jump_info blocks] returns a hashmap mapping from
      labels to blocks that they belong to, and a list of blocks'
      starting label and jump-to labels information *)
-  let get_block_jump_info bbs
-        : (Ir.stmt list * bool) BlockMap.t * (Temp.label * Temp.label list) list =
+  let get_all_jump_info bbs : (Ir.stmt list * bool) BlockMap.t =
     (* arg bbs is basic blocks *)
-    let rec get_info_iter bbs map block_jump_info = match bbs with
-      | [] -> map, block_jump_info
+    let rec get_info_iter bbs map = match bbs with
+      | [] -> map
       | bb :: rest ->
         let label, jump_to = get_jump_info bb in
         let map' = BlockMap.add label (bb, false) map in
-        get_info_iter rest map' ((label, jump_to) :: block_jump_info)
+        get_info_iter rest map'
     in
-    get_info_iter bbs BlockMap.empty []
+    get_info_iter bbs BlockMap.empty
   in
-  (** FIXME: there is no opening label for the first block. Am I doing
-   * anything wrong? *)
-  let basic_blocks = (Ir.LABEL(Temp.new_label()) :: (List.hd basic_blocks)) ::
-                       (List.tl basic_blocks) in
-  let blockMap, jump_info = get_block_jump_info basic_blocks in
+  let blockMap= get_all_jump_info basic_blocks in
   (* This function returns traced blocks. Blocks are not flattened yet. *)
-  let rec trace_block (cur_label : Temp.label) (label_queue : Temp.label list)
+  let rec trace_block cur_label bb_queue
       (cur_trace_rev : Ir.stmt list list) visited_info : Ir.stmt list list =
-    match label_queue, get_basic_block cur_label visited_info with
-    | [], (_, true) -> (* cur_label is visited already *)
+    let cur_block, visited = match get_basic_block cur_label visited_info with
+      | None -> [], true
+      | Some (b, v) -> b, v in
+    let queue =
+      if visited then bb_queue
+      else
+        let _, jumpto = get_jump_info cur_block in
+        bb_queue @ jumpto
+    in
+    match queue, cur_block, visited with
+    | [], _, true -> (* cur_label is visited already *)
       List.rev cur_trace_rev
-    | [], (block, false) ->
+    | [], block, false ->
       List.rev (block :: cur_trace_rev)
-    | next :: tl, (_, true) -> (* cur_label is visited already *)
+    | next :: tl, _, true -> (* cur_label is visited already *)
       trace_block next tl cur_trace_rev visited_info
-    | next :: tl, (block, false) ->
+    | next :: tl, block, false ->
       (* mark visited *)
       let visited_info' = BlockMap.add cur_label (block, true) visited_info in
       trace_block next tl (block :: cur_trace_rev) visited_info'
   in
-  let label_queue = List.map (fun (l, _) -> l) jump_info in
-  let first_label = List.hd label_queue in
-  let block_list = trace_block first_label label_queue [] blockMap in
-  List.flatten block_list
+  let label0, _ = get_jump_info (List.hd basic_blocks) in
+  let res = trace_block label0 [] [] blockMap in
+  (List.flatten res) @ [Ir.LABEL(lexit)]
