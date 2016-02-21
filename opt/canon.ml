@@ -104,12 +104,6 @@ let basic_blocks linearized =
     match stmt_list, curr_block_rev with
     | [], [] -> List.rev result_rev
     | [], lst -> List.rev ((List.rev curr_block_rev) :: result_rev)
-    | stmt :: rest, lst when is_jump stmt ->
-       if lst = [] then
-         failwith "jump following an empty block. Look like a bug in irgen and basic block."
-       else
-         let block = List.rev (stmt :: lst) in
-         split rest [] (block :: result_rev)
     | Ir.LABEL(l) :: rest, [ ] ->
        split rest [Ir.LABEL(l)] result_rev
     | Ir.LABEL(l) :: rest, prev :: rest' when is_jump prev ->
@@ -117,6 +111,15 @@ let basic_blocks linearized =
     | Ir.LABEL(l) :: rest, prev :: rest' ->
        let add_jump = Ir.JUMP(Ir.NAME(l), [l]) :: curr_block_rev in
        split rest [Ir.LABEL(l)] ((List.rev add_jump) :: result_rev)
+    | stmt :: rest, lst when is_jump stmt ->
+      let lst = if lst = [] then
+          (*failwith ("basic_blocks: jump following an empty block. " ^
+                   "Look like a bug in irgen and basic block.")*)
+          [stmt; Ir.LABEL(Temp.new_label())]
+        else
+          stmt :: lst in
+      let block = List.rev lst in
+      split rest [] (block :: result_rev)
     | stmt :: rest, [ ] -> (* here stmt can not be a label *)
       split rest [stmt; Ir.LABEL(Temp.new_label())] result_rev
     | stmt :: rest, lst ->

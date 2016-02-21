@@ -14,7 +14,7 @@ let assert_linearize (ir : Ir.stmt) (expect_list : Ir.stmt list) =
   let test ctx =
     let result = Canon.linearize ir |> filter_const0 in
     let expect = filter_const0 expect_list in
-    assert_equal ~printer:printer expect result
+    assert_equal ~cmp:Utils.ir_eq ~printer:printer expect result
   in
   test
 
@@ -121,10 +121,10 @@ let suite =
       [EXP(CONST(1)); EXP(CONST(2)); EXP(CONST(3)); EXP(CONST(4))]
     ;
 
-    (* We need a general alpha equivalent here. *)
-
     "raise CALL" >::
     (
+      (* This test uses ir_eq to allow different temps serving the
+      * same purpose. *)
       let temp1 = TEMP(Temp.new_temp()) in
       let temp2 = TEMP(Temp.new_temp()) in
       let temp3 = TEMP(Temp.new_temp()) in
