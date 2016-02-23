@@ -1,11 +1,16 @@
 (** Temp are abstract names for local variables *)
 
+open Symbol
+open Batteries
+
 (** abstract names for static memory location *)
 type label with sexp
 
 (** a value temporarly held in registers, which we assumed to be
   infinite *)
 type temp with sexp
+
+module LabelMap : BatMap.S with type key = label
 
 val new_temp : unit -> temp
 

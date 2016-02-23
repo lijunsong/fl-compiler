@@ -1,5 +1,6 @@
 open Sexplib.Std
 open Symbol
+open Batteries
 
 type label = Symbol.t with sexp
 type temp = int with sexp
@@ -26,3 +27,5 @@ let new_label ?(prefix="L") () =
 
 let named_label name =
   Symbol.of_string name
+
+module LabelMap = Map.Make(Symbol)

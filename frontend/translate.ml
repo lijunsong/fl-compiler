@@ -104,7 +104,9 @@ module SparcFrame : Frame = struct
     Ir.CALL(Ir.NAME(Temp.named_label f), args)
 
   let debug_dump fm =
-    Sexp.output_hum Pervasives.stdout (sexp_of_frame fm)
+    Sexp.output_hum Pervasives.stdout (sexp_of_frame fm);
+    print_string "\n"
+
 end
 
 module F = SparcFrame
@@ -122,6 +124,8 @@ type exp =
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
 
+type frag = F.frag with sexp
+
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 
 (** uniq is for compare levels *)
@@ -136,6 +140,7 @@ let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 
 let debug_print () =
   print_endline "== debug Translate Fragment ==";
+  print_endline ("total fragments: " ^ (string_of_int (List.length !frag_list)));
   List.iter (fun frag ->
       Sexp.output_hum Pervasives.stdout (F.sexp_of_frag frag);
       print_endline "")
@@ -402,8 +407,9 @@ let prepend_stmts exp_lst exp : exp =
 (** The main function to implement prologue and epilogue of functions *)
 let proc_entry_exit level fbody : unit =
   let fm = level.frame in
-  let stmt = F.proc_entry_exit1 fm (unNx fbody) in
+  let body = Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
+  let stmt = F.proc_entry_exit1 fm body in
   frag_list := F.PROC(stmt, fm) :: !frag_list
 
-let get_result () : F.frag list =
+let get_result () : frag list =
   !frag_list
