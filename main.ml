@@ -21,6 +21,7 @@ type lang =
   | CANON of linear_proc list * string_frags
   | BLOCKS of bb_proc list * string_frags
   | TRACE of linear_proc list * string_frags
+  | ASSEM of Assemble.instr list
   | EMPTY
 
 let program = ref EMPTY

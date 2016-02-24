@@ -13,7 +13,7 @@ type exp =
   | CALL of exp * exp list (** [function arguments] *)
   | ESEQ of stmt * exp (** evaluate stmt and then return the result of exp *)
  and stmt =
-   | MOVE of exp * exp
+   | MOVE of exp * exp (** dst, src *)
    | EXP of exp  (** evaluate e and discard the result *)
    | JUMP of exp * Temp.label list (** jump to exp, which has a possible location specified in the list *)
    | CJUMP of relop * exp * exp * Temp.label * Temp.label (** CJUMP(o, e1, e2, t, f), evaluate o(e1, e2), jump to t if true, f if false*)
@@ -39,3 +39,7 @@ let exp_to_string e =
 
 let stmt_to_string e =
   (Sexp.to_string_hum (sexp_of_stmt e))
+
+let get_op = function
+  | BINOP (op, _, _) -> op
+  | _ -> failwith "unreachable"
