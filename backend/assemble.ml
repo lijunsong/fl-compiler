@@ -53,8 +53,8 @@ let rec munch_exp (exp : Ir.exp) : temp =
   | Ir.NAME(l) -> failwith "unreachable"
   | Ir.ESEQ -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
-  | Ir.BINOP (Ir.MINUS, e, Ir.CONST(n))
-  | Ir.BINOP (Ir.MINUS, Ir.CONST(n), e)
+  | Ir.BINOP (Ir.MINUS, e, Ir.CONST(n))  (* TODO: redo MINUS.*)
+  | Ir.BINOP (Ir.MINUS, Ir.CONST(n), e)  (* SPARC does not have MINUS in addressing mode *)
   | Ir.BINOP (Ir.PLUS, e, Ir.CONST(n))
   | Ir.BINOP (Ir.PLUS, Ir.CONST(n), e) ->
     let opcode = Ir.get_op exp |> op_to_opcode in
@@ -89,13 +89,55 @@ let rec munch_exp (exp : Ir.exp) : temp =
     emit(nop);
     result(fun t ->
         emit(OP("mov 's0, 'd0", [t], [F.O0], None)))
-  | Ir.MEM ()
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, e, Ir.CONST(n)))
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
+  | Ir.MEM (Ir.BINOP(Ir.MINUS, e, Ir.CONST(n)))
+  | Ir.MEM (Ir.BINOP(Ir.MINUS, Ir.CONST(n), e)) ->
+    let op = match Ir.get_op exp with
+      | Ir.PLUS -> "+"
+      | Ir.MINUS -> "-"
+      | _ -> failwith "unreachable" in
+    let rand = munch_exp e in
+    result(fun t ->
+        OP(sprintf "ld ['s0 %s %d], 'd0" op n,
+           [t], [rand], None)
+        |> emit)
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, e0, e1))
+  | Ir.MEM (Ir.BINOP(Ir.MINUS, e0, e1)) ->
+    let rand0 = munch_exp e0 in
+    let rand1 = munch_exp e1 in
+    let op = match Ir.get_op exp with
+      | Ir.PLUS -> "+"
+      | Ir.MINUS -> "-"
+      | _ -> failwith "unreachable" in
+    result(fun t ->
+        OP (sprintf "ld ['s0 %s 's1], 'd0" op,
+            [t], [rand0; rand1], None)
+        |> emit)
+  | Ir.MEM (e) ->
+    let rand = munch_exp e in
+    result(fun t ->
+        OP ("ld ['s0 + 's1], 'd0", [t], [rand; F.g0], None)
+        |> emit)
   | _ -> failwith ("NYI: " ^ (exp_to_string exp))
 
 and rec munch_stmt (stmt : Ir.stmt) : unit =
   match stmt with
-  | SEQ (_) -> failwith "found SEQ. This is Canonical IR. Abort"
-  | MOVE ()
+  | Ir.SEQ (_) -> failwith "found SEQ. This is not Canonical IR. Abort"
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), e)), e1)
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, e, Ir.CONST(n))), e1) ->
+    let moveto = munch_exp e1 in
+    let rand = munch_exp e in
+    OP(sprintf "st 's0, ['s1 + %d]" n, [], [moveto; rand], None)
+    |> emit
+  | Ir.MOVE (Ir.MEM(e), e1) ->
+    let src = munch_exp e in
+    let moveto = munch_exp e1 in
+    (* dst is [], because it is the memory not the reg that holds the value *)
+    OP("st 's0, ['s1]", [], [moveto; src], None)
+
+
+
 
 
 
