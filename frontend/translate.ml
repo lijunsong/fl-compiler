@@ -85,6 +85,14 @@ module SparcFrame : Frame = struct
 
   let fp = Temp.new_temp()
 
+  let sp = Temp.new_temp() (** stackframe pointer *)
+
+  (** Sparc's out register*)
+  let o0, o1, o2, o3, o4, o5, o6 = List.map (fun _ -> Temp.new_temp())
+                                            [1;2;3;4;5;6]
+
+  let g0 = Temp.new_temp()
+
   let rv = Temp.new_temp()
 
   let word_size = 4
