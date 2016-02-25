@@ -13,7 +13,7 @@ let new_temp () =
   !temp_count
 
 let temp_to_string (tmp : temp) =
-  "tmp" ^ (string_of_int tmp)
+  "r" ^ (string_of_int tmp)
 
 let label_with_prefix prefix =
   Symbol.of_string (prefix ^ (string_of_int !label_count))

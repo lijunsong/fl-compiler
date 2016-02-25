@@ -21,7 +21,10 @@ type lang =
   | CANON of linear_proc list * string_frags
   | BLOCKS of bb_proc list * string_frags
   | TRACE of linear_proc list * string_frags
-  | ASSEM of Assemble.instr list
+
+  | ASSEM of Codegen.instr list list
+  (** each function will generate a list of instr *)
+
   | EMPTY
 
 let program = ref EMPTY
@@ -101,6 +104,16 @@ let to_trace () =
      program := TRACE(traced, strs)
   | _ -> failwith "unreachable"
 
+let to_assem () =
+  to_trace ();
+  match !program with
+  | TRACE (linear_list, str) ->
+    let res = List.map (fun (ir, frame) ->
+        let seq = Ir.seq ir in
+        Codegen.codegen frame seq) linear_list in
+    program := ASSEM(res)
+  | _ -> failwith "unreachable"
+
 let print () =
   let print_ir_list list =
      List.iter (fun stmt ->
@@ -148,7 +161,13 @@ let print () =
      List.iter (fun ir ->
          let sexp = Translate.sexp_of_frag ir in
          Sexp.output_hum Pervasives.stdout sexp)
-               ir_list
+       ir_list
+  | ASSEM(instr_list) ->
+    List.iter (fun instr_list ->
+        List.iter (fun instr ->
+            let s = Codegen.format Temp.temp_to_string instr in
+            print_endline s) instr_list)
+      instr_list
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");
@@ -158,6 +177,7 @@ let specs = [
   ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
   ("-basicblock", Arg.Unit(to_blocks), "convert the program to basic blocks");
   ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
+  ("-codegen", Arg.Unit(to_assem), "convert the program to assembly Lang (Sparc for now)");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");
 ]

@@ -9,7 +9,10 @@ open Symbol
 
 (** TODO: make translate a functor taking Frame as input module *)
 module type Frame = sig
+  type register = string with sexp
+
   type frame with sexp
+
   type access with sexp
 
   type frag =
@@ -17,8 +20,14 @@ module type Frame = sig
     | STRING of Temp.label * string
   with sexp
 
+  (** all register names for the target machines *)
+  val registers: register list
+
+  (** given a name, return the register *)
+  val get_register : register -> Temp.temp
+
   (** [new_frame name formals] create a frame named l. A list of
-  bool indicates whether each formal argument escapes. *)
+      bool indicates whether each formal argument escapes. *)
   val new_frame : Temp.label -> bool list -> frame
 
   (** retrieve the given frame's name *)

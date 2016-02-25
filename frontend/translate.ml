@@ -4,13 +4,22 @@ open Symbol
 open Batteries
 
 module type Frame = sig
+  type register = string with sexp
+
   type frame with sexp
+
   type access with sexp
 
   type frag =
     | PROC of Ir.stmt * frame
     | STRING of Temp.label * string
   with sexp
+
+  (** all register names for the target machines *)
+  val registers: register list
+
+  (** given a name, return the register *)
+  val get_register : register -> Temp.temp
 
   (** [new_frame name formals] create a frame named l. A list of
       bool indicates whether each formal argument escapes. *)
@@ -48,6 +57,8 @@ module type Frame = sig
 end
 
 module SparcFrame : Frame = struct
+  type register = string with sexp
+
   type access =
     | InReg of Temp.temp   (** which register to store *)
     | InMem of int         (** offset in the frame *)
@@ -63,6 +74,23 @@ module SparcFrame : Frame = struct
     | PROC of Ir.stmt * frame
     | STRING of Temp.label * string
   with sexp
+
+  let registers = [
+    "o0"; "o1"; "o2"; "o3"; "o4"; "o5"; "o6";
+    "i0"; "i1"; "i2"; "i3"; "i4"; "i5"; "i6";
+    "g0";
+    "sp"; "fp"
+  ]
+
+  module RegMap = Map.Make(String)
+
+  let reg_map = List.map
+      (fun reg -> reg, Temp.new_temp()) registers
+                |> List.enum
+                |> RegMap.of_enum
+
+  let get_register reg =
+    RegMap.find reg reg_map
 
   let new_frame (name : Temp.label) (formals : bool list) : frame =
     { name;
@@ -83,17 +111,9 @@ module SparcFrame : Frame = struct
     fm.locals <- loc :: fm.locals;
     loc
 
-  let fp = Temp.new_temp()
+  let fp = get_register "fp"
 
-  let sp = Temp.new_temp() (** stackframe pointer *)
-
-  (** Sparc's out register*)
-  let o0, o1, o2, o3, o4, o5, o6 = List.map (fun _ -> Temp.new_temp())
-                                            [1;2;3;4;5;6]
-
-  let g0 = Temp.new_temp()
-
-  let rv = Temp.new_temp()
+  let rv = get_register "o0"
 
   let word_size = 4
 

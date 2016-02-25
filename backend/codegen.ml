@@ -27,6 +27,7 @@ let emit instr : unit =
 
 (** TODO *)
 let format tmp_to_string instr =
+
   match instr with
   | OP (asm, dst, srcs, jmp) -> asm
   | LABEL (asm, l) -> asm
@@ -39,9 +40,20 @@ let op_to_opcode = function
   | Ir.DIV -> failwith "unavailable on SPARC"
   | _ -> failwith "NYI"
 
-(** call instruction will trash some registers, which is defined
-here *)
-let calldefs = [F.o0; F.o1; F.o2; F.o3; F.o4; F.o5; F.o6]
+(**/ the following describe registers *)
+
+(** registers to which a call replaces its results *)
+let call_write_regs =
+  List.map F.get_register ["o0"; "o1"; "o2"; "o3"; "o4"; "o5"]
+(** zero register on sparc *)
+let g0 = F.get_register "g0"
+let sp = F.get_register "sp"
+
+(** sparc has 6 input registers, get these registers by their indecies *)
+let ireg_of_index i : Temp.temp =
+  assert (i >= 0 && i <= 5);
+  let reg = sprintf "i%d" i in
+  F.get_register reg
 
 let rec munch_exp (exp : Ir.exp) : temp =
   match exp with
@@ -78,10 +90,10 @@ let rec munch_exp (exp : Ir.exp) : temp =
        emit(OP(sprintf "mulx 's0, %d, 'd0" n, [t], [rand], None)))
   | Ir.CALL (f, args) ->
     let src = (munch_exp f) :: (munch_args args) in
-    emit(OP("call 's0", calldefs, src, None));
+    emit(OP("call 's0", call_write_regs, src, None));
     emit(nop);
     result(fun t ->
-        emit(MOVE("mov 's0, 'd0", t, F.O0)))
+        emit(MOVE("mov 's0, 'd0", t, F.rv)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, e, Ir.CONST(n)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
   | Ir.MEM (Ir.BINOP(Ir.MINUS, e, Ir.CONST(n)))
@@ -110,9 +122,9 @@ let rec munch_exp (exp : Ir.exp) : temp =
   | Ir.MEM (e) ->
     let rand = munch_exp e in
     result(fun t ->
-        OP ("ld ['s0 + 's1], 'd0", [t], [rand; F.g0], None)
+        OP ("ld ['s0 + 's1], 'd0", [t], [rand; g0], None)
         |> emit)
-  | _ -> failwith ("NYI munch_exp: " ^ (exp_to_string exp))
+  | _ -> failwith ("NYI munch_exp: " ^ (Ir.exp_to_string exp))
 
 and munch_args args =
   (** store all arguments on stack (starts on %sp+96) *)
@@ -124,11 +136,14 @@ and munch_args args =
          let offset = 96 + count * F.word_size in
          (** TODO: this is actually not right. The offset should
          stored in a way that callee is aware of these arguments.*)
-         emit(OP("st 's0, ['s1+%d]" offset, [], [arg_temp, F.sp]))
+         emit(OP(sprintf "st 's0, ['s1+%d]" offset,
+                 [],
+                 [arg_temp; sp],
+                 None))
     in
     store_iter args 0
   in
-  let munch_iter args cur_idx temps =
+  let rec munch_iter args cur_idx temps =
     if cur_idx > 5 then
       (store_args args; temps)
     else
@@ -136,7 +151,7 @@ and munch_args args =
       | [ ] -> temps
       | arg :: rest ->
          let arg_temp = munch_exp arg in
-         emit(MOVE("mov 's0, 'd0", F.idx_arg cur_idx, arg_temp));
+         emit(MOVE("mov 's0, 'd0", ireg_of_index cur_idx, arg_temp));
          munch_iter rest (cur_idx+1) (arg_temp :: temps)
   in
   munch_iter args 0 []
@@ -164,22 +179,22 @@ and munch_stmt (stmt : Ir.stmt) : unit =
      |> emit
   | Ir.EXP(e) ->
      let src = munch_exp e in
-     MOVE("mov 's0, 'd0", F.g0, src)
+     MOVE("mov 's0, 'd0", g0, src)
      |> emit
   | Ir.JUMP (Ir.NAME(l), ls) ->
      (* Use synthetic*)
-     OP("jmp " ^ (label_to_string l), [], [], Some ls)
+     OP("jmp " ^ (Temp.label_to_string l), [], [], Some ls)
      |> emit
   | Ir.CJUMP (relop, e0, e1, t, f) -> (* TODO: this is not maximal munch *)
      let t0 = munch_exp e0 in
      let t1 = munch_exp e1 in
      OP("cmp 's0, 's1",
         [(*TODO: what is the out register?*)],
-        [t0, t1], Some([t; f]))
+        [t0; t1], Some([t; f]))
      |> emit
   | Ir.LABEL(l) ->
-     LABEL("label " ^ (label_to_string l), l)
-  | _ -> failwith ("NYI munch_stmt: " ^ (Ir.exp_to_string exp))
+    emit(LABEL("label " ^ (Temp.label_to_string l), l))
+  | _ -> failwith ("NYI munch_stmt: " ^ (Ir.stmt_to_string stmt))
 
 and result gen : temp =
   let t = Temp.new_temp () in

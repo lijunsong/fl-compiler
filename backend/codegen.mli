@@ -1,6 +1,8 @@
-moduel F = Translate.F
+module F = Translate.F
 
 type instr
+
+type temp = Temp.temp
 
 val format: (temp -> string) -> instr -> string
 
