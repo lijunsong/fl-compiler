@@ -26,12 +26,41 @@ let emit instr : unit =
   instr_list := instr :: !instr_list
 
 (** TODO *)
-let format tmp_to_string instr =
-
+let format temp_to_string instr =
+  let rec asm_str template dst src str = (* todo: reverse the result *)
+    match template with
+    | '\'' :: 'd' :: n :: rest ->
+      let idx = (int_of_char n) - 48 in
+      let temp = List.nth dst idx in
+      asm_str rest dst src ((temp_to_string temp) ^ str)
+    | '\'' :: 's' :: n :: rest ->
+      let idx = (int_of_char n) - 48 in
+      let temp = List.nth src idx in
+      asm_str rest dst src ((temp_to_string temp) ^ str)
+    | hd :: rest ->
+      asm_str rest dst src ((String.make 1 hd) ^ str)
+    | [] -> str
+  in
   match instr with
-  | OP (asm, dst, srcs, jmp) -> asm
-  | LABEL (asm, l) -> asm
-  | MOVE (asm, dst, src) -> asm
+  | OP (asm, dst, src, jmp) -> asm_str (String.to_list asm) dst src ""
+(*begin try asm_str (String.to_list asm) dst src ""
+      with _ ->
+        failwith ("error occurs when format asm: " ^
+                  asm ^ "\n" ^
+                  "dst: " ^ (List.map temp_to_string dst
+                             |> String.concat ",") ^ "\n" ^
+                  "src: " ^ (List.map temp_to_string src
+                             |> String.concat ",") ^ "\n")
+  end*)
+    | LABEL (asm, l) -> asm
+    | MOVE (asm, dst, src) ->asm_str (String.to_list asm) [dst] [src] ""
+        (*begin try asm_str (String.to_list asm) [dst] [src] ""
+        with _ ->
+        failwith ("error occurs when format asm: " ^
+                  asm ^ "\n" ^
+                  "dst: " ^ (temp_to_string dst) ^ "\n" ^
+                  "src: " ^ (temp_to_string src) ^ "\n")
+          end*)
 
 let op_to_opcode = function
   | Ir.PLUS -> "add"
@@ -193,7 +222,7 @@ and munch_stmt (stmt : Ir.stmt) : unit =
         [t0; t1], Some([t; f]))
      |> emit
   | Ir.LABEL(l) ->
-    emit(LABEL("label " ^ (Temp.label_to_string l), l))
+    emit(LABEL(Temp.label_to_string l, l))
   | _ -> failwith ("NYI munch_stmt: " ^ (Ir.stmt_to_string stmt))
 
 and result gen : temp =
