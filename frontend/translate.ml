@@ -52,6 +52,14 @@ module type Frame = sig
   (** implement view shift. Mainly called by Translate.proc_entry_exit *)
   val proc_entry_exit1 : frame -> Ir.stmt -> Ir.stmt
 
+  (** after codegen, this function marks special registers for coloring.
+   * This is called after codegen. *)
+  val proc_entry_exit2 : frame -> Assem.instr list -> Assem.instr list
+
+  (** genearte assembly prologue and epilogue, this is called after
+   *  codegen. *)
+  val proc_entry_exit3 : frame -> string list -> string list
+
   (** dump frame information for debugging *)
   val debug_dump : frame -> unit
 end
@@ -127,6 +135,21 @@ module SparcFrame : Frame = struct
 
   (** FIXME *)
   let proc_entry_exit1 f stmt = stmt
+
+  let proc_entry_exit2 f instrs =
+    (* TODO: list callee-saved registers *)
+    let live_reg =
+      List.map get_register
+               ["g0"; "o0"; "o1"; "o2"; "o3"; "o4"; "o5"]
+    in
+    instrs @ [
+        Assem.OP("", [], live_reg, None)
+      ]
+
+  let proc_entry_exit3 f body =
+    let prol = "procedure: " ^ (Temp.label_to_string f.name) in
+    let epil = "end " ^ (Temp.label_to_string f.name) in
+    (prol :: body) @ [epil]
 
   let external_call f args =
     Ir.CALL(Ir.NAME(Temp.named_label f), args)

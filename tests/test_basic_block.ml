@@ -45,13 +45,13 @@ let suite =
      let exitl = Temp.new_label() in
      assert_basic_block
        [JUMP(NAME(l1), [l1]);
-        EXP(CONST(0)); (*dead*)
+        EXP(CONST(99)); (*dead*)
         LABEL(l1);
         EXP(CONST(1));]
        [newl();
         JUMP(NAME(l1), [l1]);
         newl();
-        EXP(CONST(0)); (*dead*)
+        EXP(CONST(99)); (*dead*)
         JUMP(NAME(l1), [l1]);
         LABEL(l1);
         EXP(CONST(1));

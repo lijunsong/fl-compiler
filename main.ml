@@ -22,7 +22,7 @@ type lang =
   | BLOCKS of bb_proc list * string_frags
   | TRACE of linear_proc list * string_frags
 
-  | ASSEM of Codegen.instr list list
+  | ASSEM of Assem.instr list list
   (** each function will generate a list of instr *)
 
   | EMPTY

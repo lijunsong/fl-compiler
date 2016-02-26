@@ -1,18 +1,5 @@
 open Batteries
-
-type temp = Temp.temp
-
-type label = Temp.label
-
-type instr =
-  | OP of string * temp list * temp list * label list option
-  (** assembly, dst, src, jump *)
-
-  | LABEL of string * label
-  (** assembly, label *)
-
-  | MOVE of string * temp * temp
-  (** assembly, dst, src *)
+open Assem
 
 module F = Translate.F
 
@@ -30,37 +17,37 @@ let format temp_to_string instr =
   let rec asm_str template dst src str = (* todo: reverse the result *)
     match template with
     | '\'' :: 'd' :: n :: rest ->
-      let idx = (int_of_char n) - 48 in
-      let temp = List.nth dst idx in
-      asm_str rest dst src ((temp_to_string temp) ^ str)
+       let idx = (int_of_char n) - 48 in
+       let temp = List.nth dst idx in
+       asm_str rest dst src ((temp_to_string temp |> String.rev) ^ str)
     | '\'' :: 's' :: n :: rest ->
-      let idx = (int_of_char n) - 48 in
-      let temp = List.nth src idx in
-      asm_str rest dst src ((temp_to_string temp) ^ str)
+       let idx = (int_of_char n) - 48 in
+       let temp = List.nth src idx in
+       asm_str rest dst src ((temp_to_string temp |> String.rev) ^ str)
     | hd :: rest ->
-      asm_str rest dst src ((String.make 1 hd) ^ str)
-    | [] -> str
+       asm_str rest dst src ((String.make 1 hd) ^ str)
+    | [] -> String.rev str
   in
   match instr with
-  | OP (asm, dst, src, jmp) -> asm_str (String.to_list asm) dst src ""
-(*begin try asm_str (String.to_list asm) dst src ""
-      with _ ->
-        failwith ("error occurs when format asm: " ^
-                  asm ^ "\n" ^
-                  "dst: " ^ (List.map temp_to_string dst
-                             |> String.concat ",") ^ "\n" ^
-                  "src: " ^ (List.map temp_to_string src
-                             |> String.concat ",") ^ "\n")
-  end*)
-    | LABEL (asm, l) -> asm
-    | MOVE (asm, dst, src) ->asm_str (String.to_list asm) [dst] [src] ""
-        (*begin try asm_str (String.to_list asm) [dst] [src] ""
-        with _ ->
-        failwith ("error occurs when format asm: " ^
-                  asm ^ "\n" ^
-                  "dst: " ^ (temp_to_string dst) ^ "\n" ^
-                  "src: " ^ (temp_to_string src) ^ "\n")
-          end*)
+  | OP (asm, dst, src, jmp) ->
+     begin try asm_str (String.to_list asm) dst src ""
+           with _ ->
+             failwith ("error occurs when format asm: " ^
+                         asm ^ "\n" ^
+                           "dst: " ^ (List.map temp_to_string dst
+                                      |> String.concat ",") ^ "\n" ^
+                             "src: " ^ (List.map temp_to_string src
+                                        |> String.concat ",") ^ "\n")
+     end
+  | LABEL (asm, l) -> asm ^ ":"
+  | MOVE (asm, dst, src) ->
+     begin try asm_str (String.to_list asm) [dst] [src] ""
+           with _ ->
+             failwith ("error occurs when format asm: " ^
+                         asm ^ "\n" ^
+                           "dst: " ^ (temp_to_string dst) ^ "\n" ^
+                             "src: " ^ (temp_to_string src) ^ "\n")
+     end
 
 let op_to_opcode = function
   | Ir.PLUS -> "add"
@@ -87,72 +74,72 @@ let ireg_of_index i : Temp.temp =
 let rec munch_exp (exp : Ir.exp) : temp =
   match exp with
   | Ir.CONST(i) ->
-    result(fun t ->
-        OP("set " ^ (string_of_int i) ^ " 'd0",
-           [t], [], None)
-        |> emit)
+     result(fun t ->
+         OP("set " ^ (string_of_int i) ^ ", 'd0",
+            [t], [], None)
+         |> emit)
   | Ir.NAME(l) -> failwith "unreachable"
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
   | Ir.BINOP (Ir.MINUS, e, Ir.CONST(n))  (* TODO: redo MINUS.*)
-  | Ir.BINOP (Ir.MINUS, Ir.CONST(n), e)  (* SPARC does not have MINUS in addressing mode *)
-  | Ir.BINOP (Ir.PLUS, e, Ir.CONST(n))
-  | Ir.BINOP (Ir.PLUS, Ir.CONST(n), e) ->
-    let opcode = Ir.get_op exp |> op_to_opcode in
-    let rand = munch_exp e in
-    if (-4096) <= n && n >= 4095 then
-      result(fun t ->
-          OP(sprintf "%s 's0, %s, 'd0" opcode (string_of_int n),
-             [t], [rand], None)
-          |> emit)
-    else
-      let rand1 = munch_exp (Ir.CONST(n)) in
-      result(fun t ->
-          OP(sprintf "%s 's0, 's1, 'd0" opcode,
-             [t], [rand; rand1], None)
-          |> emit)
+    | Ir.BINOP (Ir.MINUS, Ir.CONST(n), e)  (* SPARC does not have MINUS in addressing mode *)
+    | Ir.BINOP (Ir.PLUS, e, Ir.CONST(n))
+    | Ir.BINOP (Ir.PLUS, Ir.CONST(n), e) ->
+     let opcode = Ir.get_op exp |> op_to_opcode in
+     let rand = munch_exp e in
+     if (-4096) <= n && n >= 4095 then
+       result(fun t ->
+           OP(sprintf "%s 's0, %s, 'd0" opcode (string_of_int n),
+              [t], [rand], None)
+           |> emit)
+     else
+       let rand1 = munch_exp (Ir.CONST(n)) in
+       result(fun t ->
+           OP(sprintf "%s 's0, 's1, 'd0" opcode,
+              [t], [rand; rand1], None)
+           |> emit)
 
   | Ir.BINOP (Ir.MUL, Ir.CONST(n), e)
-  | Ir.BINOP (Ir.MUL, e, Ir.CONST(n)) ->
+    | Ir.BINOP (Ir.MUL, e, Ir.CONST(n)) ->
      let rand = munch_exp e in (* TODO: desugar this to a CALL? *)
      result(fun t ->
-       emit(OP(sprintf "mulx 's0, %d, 'd0" n, [t], [rand], None)))
+         emit(OP(sprintf "mulx 's0, %d, 'd0" n, [t], [rand], None)))
   | Ir.CALL (f, args) ->
-    let src = (munch_exp f) :: (munch_args args) in
-    emit(OP("call 's0", call_write_regs, src, None));
-    emit(nop);
-    result(fun t ->
-        emit(MOVE("mov 's0, 'd0", t, F.rv)))
+     let src = (munch_exp f) :: (munch_args args) in
+     emit(OP("call 's0", call_write_regs, src, None));
+     emit(nop);
+     result(fun t ->
+         emit(MOVE("mov 's0, 'd0", t, F.rv)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, e, Ir.CONST(n)))
-  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
-  | Ir.MEM (Ir.BINOP(Ir.MINUS, e, Ir.CONST(n)))
-  | Ir.MEM (Ir.BINOP(Ir.MINUS, Ir.CONST(n), e)) ->
-    let op = match Ir.get_op exp with
-      | Ir.PLUS -> "+"
-      | Ir.MINUS -> "-"
-      | _ -> failwith "unreachable" in
-    let rand = munch_exp e in
-    result(fun t ->
-        OP(sprintf "ld ['s0 %s %d], 'd0" op n,
-           [t], [rand], None)
-        |> emit)
+    | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
+    | Ir.MEM (Ir.BINOP(Ir.MINUS, e, Ir.CONST(n)))
+    | Ir.MEM (Ir.BINOP(Ir.MINUS, Ir.CONST(n), e)) ->
+     let op = match Ir.get_op exp with
+       | Ir.PLUS -> "+"
+       | Ir.MINUS -> "-"
+       | _ -> failwith "unreachable" in
+     let rand = munch_exp e in
+     result(fun t ->
+         OP(sprintf "ld ['s0 %s %d], 'd0" op n,
+            [t], [rand], None)
+         |> emit)
   | Ir.MEM (Ir.BINOP(Ir.PLUS, e0, e1))
-  | Ir.MEM (Ir.BINOP(Ir.MINUS, e0, e1)) ->
-    let rand0 = munch_exp e0 in
-    let rand1 = munch_exp e1 in
-    let op = match Ir.get_op exp with
-      | Ir.PLUS -> "+"
-      | Ir.MINUS -> "-"
-      | _ -> failwith "unreachable" in
-    result(fun t ->
-        OP (sprintf "ld ['s0 %s 's1], 'd0" op,
-            [t], [rand0; rand1], None)
-        |> emit)
+    | Ir.MEM (Ir.BINOP(Ir.MINUS, e0, e1)) ->
+     let rand0 = munch_exp e0 in
+     let rand1 = munch_exp e1 in
+     let op = match Ir.get_op exp with
+       | Ir.PLUS -> "+"
+       | Ir.MINUS -> "-"
+       | _ -> failwith "unreachable" in
+     result(fun t ->
+         OP (sprintf "ld ['s0 %s 's1], 'd0" op,
+             [t], [rand0; rand1], None)
+         |> emit)
   | Ir.MEM (e) ->
-    let rand = munch_exp e in
-    result(fun t ->
-        OP ("ld ['s0 + 's1], 'd0", [t], [rand; g0], None)
-        |> emit)
+     let rand = munch_exp e in
+     result(fun t ->
+         OP ("ld ['s0 + 's1], 'd0", [t], [rand; g0], None)
+         |> emit)
   | _ -> failwith ("NYI munch_exp: " ^ (Ir.exp_to_string exp))
 
 and munch_args args =
@@ -191,17 +178,17 @@ and munch_stmt (stmt : Ir.stmt) : unit =
      munch_stmt s0;
      munch_stmt s1
   | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), e)), e1)
-  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, e, Ir.CONST(n))), e1) ->
-    let moveto = munch_exp e1 in
-    let rand = munch_exp e in
-    OP(sprintf "st 's0, ['s1 + %d]" n, [], [moveto; rand], None)
-    |> emit
+    | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, e, Ir.CONST(n))), e1) ->
+     let moveto = munch_exp e1 in
+     let rand = munch_exp e in
+     OP(sprintf "st 's0, ['s1 + %d]" n, [], [moveto; rand], None)
+     |> emit
   | Ir.MOVE (Ir.MEM(e), e1) ->
-    let src = munch_exp e in
-    let moveto = munch_exp e1 in
-    (* dst is [], because it is the memory not the reg that holds the value *)
-    OP("st 's0, ['s1]", [], [moveto; src], None)
-    |> emit
+     let src = munch_exp e in
+     let moveto = munch_exp e1 in
+     (* dst is [], because it is the memory not the reg that holds the value *)
+     OP("st 's0, ['s1]", [], [moveto; src], None)
+     |> emit
   | Ir.MOVE (Ir.TEMP(t), e) ->
      let src = munch_exp e in
      MOVE("mov 's0, 'd0", t, src)
@@ -222,7 +209,7 @@ and munch_stmt (stmt : Ir.stmt) : unit =
         [t0; t1], Some([t; f]))
      |> emit
   | Ir.LABEL(l) ->
-    emit(LABEL(Temp.label_to_string l, l))
+     emit(LABEL(Temp.label_to_string l, l))
   | _ -> failwith ("NYI munch_stmt: " ^ (Ir.stmt_to_string stmt))
 
 and result gen : temp =

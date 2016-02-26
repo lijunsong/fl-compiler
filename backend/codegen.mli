@@ -1,9 +1,5 @@
 module F = Translate.F
 
-type instr
+val format: (Assem.temp -> string) -> Assem.instr -> string
 
-type temp = Temp.temp
-
-val format: (temp -> string) -> instr -> string
-
-val codegen : F.frame -> Ir.stmt -> instr list
+val codegen : F.frame -> Ir.stmt -> Assem.instr list

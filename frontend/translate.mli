@@ -57,6 +57,14 @@ module type Frame = sig
   (** implement view shift. Mainly called by Translate.proc_entry_exit *)
   val proc_entry_exit1 : frame -> Ir.stmt -> Ir.stmt
 
+  (** after codegen, this function marks special registers for coloring.
+   * This is called after codegen. *)
+  val proc_entry_exit2 : frame -> Assem.instr list -> Assem.instr list
+
+  (** genearte assembly prologue and epilogue, this is called after
+   *  codegen. *)
+  val proc_entry_exit3 : frame -> string list -> string list
+
   (** dump frame information for debugging *)
   val debug_dump : frame -> unit
 end

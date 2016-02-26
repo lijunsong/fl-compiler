@@ -43,6 +43,8 @@ let rec visit_stmt = function
      Ir.SEQ(s1', s2')
   | Ir.LABEL (_) as l -> l
 
+(** visit_exp searches in an exp, extracts all sub-exp that need
+raise, and replaces these sub-exp with temps. *)
 and visit_exp e : Ir.stmt * Ir.exp =
   (* Printf.printf "visit_exp: %s\n%!" (Ir.exp_to_string e); *)
   match e with
@@ -80,12 +82,22 @@ and reorder_exp (children : Ir.exp list)
   Ir.seq to_prepend, exp
 
 
+(* drop EXP(CONST(0)). keep other EXP(CONST()) as tests uses a lot
+EXP(CONST) *)
+let drop_const_exp seq =
+  List.filter(fun ir -> match ir with
+                     | Ir.EXP(Ir.CONST(0)) -> false
+                     | _ -> true) seq
+
+
+(* Linearize drops SEQ *)
 let linearize stmt : Ir.stmt list =
   let rec linear seq res = match seq with
     | Ir.SEQ(s1, s2) -> linear s1 (linear s2 res)
     | _ -> seq :: res
   in
   linear (visit_stmt stmt) []
+  |> drop_const_exp
 
 
 let basic_blocks linearized =
