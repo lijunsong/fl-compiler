@@ -14,7 +14,8 @@ let emit instr : unit =
 
 (** TODO *)
 let format temp_to_string instr =
-  let rec asm_str template dst src str = (* todo: reverse the result *)
+  (* todo: asm_str can be made easy if you reverse the template string! *)
+  let rec asm_str template dst src str =
     match template with
     | '\'' :: 'd' :: n :: rest ->
        let idx = (int_of_char n) - 48 in
