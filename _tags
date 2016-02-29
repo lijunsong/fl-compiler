@@ -1,4 +1,4 @@
-<frontend> or <opt> or <backend> or <tests>: include
+<frontend> or <backend> or <tests>: include
 true: package(batteries), package(oUnit), package(sexplib), package(sexplib.syntax)
 true: syntax(camlp4o)
 true: debug
