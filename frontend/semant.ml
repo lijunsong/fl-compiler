@@ -78,11 +78,11 @@ let trans_relop (op : S.op) : Ir.relop = match op with
  *     for i := lo to hi do body
  *  to
  *     let var i := lo
- *         var limit := hi in
- *     if (i <= limit)
+ *         var %limit := hi in
+ *     if (i <= %limit)
  *        while 1 do (
  *          body
- *          if (i < limit) then i = i + 1  // extra_if here
+ *          if (i < %limit) then i = i + 1  // extra_if here
  *          else break
  *        )
  *)

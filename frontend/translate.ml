@@ -299,7 +299,6 @@ let prepend_stmts exp_lst exp : exp =
   let ir_lst = List.map (fun e -> unNx e) exp_lst in
   Nx(Ir.SEQ(Ir.seq ir_lst, unNx exp))
 
-(** The main function to implement prologue and epilogue of functions *)
 let proc_entry_exit level fbody : unit =
   let fm = level.frame in
   let body = Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
