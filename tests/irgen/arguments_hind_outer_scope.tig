@@ -2,7 +2,7 @@
 let
 	var a:=0
 
-	function g(a:int):int = a 
+	function g(a:int):int = a + 1
 in
- g(2)
+ g(a)
 end

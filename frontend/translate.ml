@@ -43,7 +43,7 @@ let debug_print () =
   print_endline "== debug end =="
 
 (** To use an IR as an Ex, call this function *)
-let unEx (exp : exp) : Ir.exp = match exp with
+let rec unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
   | Nx (stmt) -> Ir.ESEQ(stmt, Ir.CONST(0))
   | Cx (genjump) ->

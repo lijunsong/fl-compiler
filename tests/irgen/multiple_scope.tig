@@ -1,0 +1,17 @@
+let
+  var a := 0
+  function foo(): int =
+    let var b := 1
+        function bar():int =
+          let var c := 2
+              function f():int =
+                a + b + c
+          in
+          f()
+          end
+    in
+    bar()
+    end
+in
+  foo()
+end
