@@ -1,0 +1,10 @@
+/* OK. break cann't occur in a function body, but here is in a while */
+let var i := 0 in
+   while(1) do (
+      let function foo(a:int) =
+           while (1) do (break)
+      in
+      foo(1)
+      end
+   )
+end

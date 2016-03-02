@@ -1,9 +1,7 @@
-/* error : type mismatch */
-
 let 
 	type rectype = {name:string , id:int}
 	var rec1 := rectype {name="aname", id=0}
 in
 	rec1.name := "some name";
-	rec1.id := 3;
+	rec1.id := 3
 end

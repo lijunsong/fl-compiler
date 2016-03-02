@@ -160,7 +160,8 @@ let print () =
   | IR(ir_list) ->
      List.iter (fun ir ->
          let sexp = Translate.sexp_of_frag ir in
-         Sexp.output_hum Pervasives.stdout sexp)
+         Sexp.output_hum Pervasives.stdout sexp;
+         print_string "\n")
        ir_list
   | ASSEM(instr_list) ->
     List.iter (fun instr_list ->

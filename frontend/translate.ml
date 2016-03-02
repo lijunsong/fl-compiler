@@ -125,8 +125,7 @@ let string (s : string) : exp =
 (** FIXME *)
 let nil () : exp = Ex(Ir.CONST(0))
 
-(** FIXME: given a label, jump to label *)
-let break () : exp = Ex(Ir.CONST(0))
+let break lab : exp = Nx(Ir.JUMP(Ir.NAME(lab), [lab]))
 
 let no_value () : exp = Nx(Ir.EXP(Ir.CONST(0)))
 
@@ -278,13 +277,11 @@ let if_cond_nonunit_body tst thn (els : exp option) : exp =
  * tst_label:
  * if tst then
  *   (body; jump tst_label)
- * else
  * done_label:
  *)
-let while_loop tst body : exp =
+let while_loop tst body label_done: exp =
   let label_tst = Temp.new_label ~prefix:"while_test" () in
   let label_body = Temp.new_label ~prefix:"while_body" () in
-  let label_done = Temp.new_label ~prefix:"while_done" () in
   let tst_ir = (unCx tst) label_body label_done in
   let body_ir = Ir.SEQ(unNx body,
                        Ir.JUMP(Ir.NAME(label_tst), [label_tst]))

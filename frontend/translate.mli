@@ -70,7 +70,7 @@ val var_subscript : exp -> exp -> exp
 
 val nil : unit -> exp
 
-val break: unit -> exp
+val break: Temp.label -> exp
 
 val no_value: unit -> exp
 
@@ -94,7 +94,7 @@ val if_cond_unit_body : exp -> exp -> exp option -> exp
 
 val if_cond_nonunit_body : exp -> exp -> exp option -> exp
 
-val while_loop : exp -> exp -> exp
+val while_loop : exp -> exp -> Temp.label -> exp
 
 val array : exp -> exp -> exp
 
