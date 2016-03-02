@@ -295,9 +295,9 @@ let while_loop tst body : exp =
             |> wrap_label label_tst in
   Nx(res)
 
-let prepend_stmts exp_lst exp : exp =
+let let_body exp_lst exp : exp =
   let ir_lst = List.map (fun e -> unNx e) exp_lst in
-  Nx(Ir.SEQ(Ir.seq ir_lst, unNx exp))
+  Ex(Ir.ESEQ(Ir.seq ir_lst, unEx exp))
 
 let proc_entry_exit level fbody : unit =
   let fm = level.frame in

@@ -98,9 +98,7 @@ val while_loop : exp -> exp -> exp
 
 val array : exp -> exp -> exp
 
-(** [prepend_stmts lst e] Prepend a list of statements [lst] to the
-given [e] *)
-val prepend_stmts : exp list -> exp -> exp
+val let_body : exp list -> exp -> exp
 
 (** [proc_entry_exit level fbody] remembers the [fbody] of [level] as
     a fragment.

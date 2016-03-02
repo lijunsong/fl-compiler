@@ -415,8 +415,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       | S.Let (pos, decl, body) ->
          let tenv', venv', inits = trans_decl curr_level tenv venv decl in
          let body_ir, t = trans_exp curr_level tenv' venv' body in
-         (* BUGS: body_ir should not be treated as a stmt. the last one is the result. *)
-         Translate.prepend_stmts inits body_ir, t
+         Translate.let_body inits body_ir, t
 
       | S.Arr (pos, typ, size, init) ->
          begin match SymbolTable.look typ tenv with
