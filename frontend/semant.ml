@@ -354,9 +354,15 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
         | Some (record) -> begin
             match record with
             | Types.RECORD(lst, uniq) ->
-              let flds = List.map2 (fun (pos, s0, e0) (s1, expect_t) ->
-                  (* s0, e0 is the constructor, s1, expect_t is what
-                     user declared, see if they match. *)
+              let flds = List.map2 (fun (pos, s0, e0) (s1, expect_name) ->
+                  (* s0, e0 is the constructor, s1, expect_name is
+                     what user declared, see if they match.  NOTE: if
+                     expect_name is Types.NAME. find the type of the
+                     name first *)
+                  let expect_t = match expect_name with
+                    | Types.NAME (name, _) -> get_type pos name tenv
+                    | t -> t
+                  in
                   if s0 <> s1 then
                     raise_undef pos s0
                   else let e_ir, e_t = trexp e0 in (* check type *)
