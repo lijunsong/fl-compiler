@@ -1,6 +1,6 @@
 open Symbol
 open Translate
-
+open Batteries
 
 (** uniq is to differentiate records (and arrays) that have similar
  * fields *)
@@ -17,13 +17,14 @@ end = struct
     !next
 end
 
+(* TODO: explain the necessary to have NIL and UNIT both as a type. *)
 type t =
   | INT
   | STRING
   | RECORD of (Symbol.t * t) list * Uniq.t
   | ARRAY of t * Uniq.t
-  | NIL
-  | UNIT
+  | NIL      (* NIL is normally used as the type of nil, as var a : record = nil *)
+  | UNIT     (* UNIT is the type of an empty sequence. *)
   | NAME of Symbol.t * t option ref
 
 type typ =
@@ -67,7 +68,13 @@ let typeEnv : typeEnv =
       SymbolTable.enter (Symbol.of_string s) t table)
                   predefined SymbolTable.empty
 
-let valEnv : valEnv = SymbolTable.empty
+(** valEnv predefines built-in functions. *)
+let valEnv : valEnv =
+  ["print", FuncType(Translate.outermost, [STRING], UNIT)
+  ]
+  |> List.map (fun (n,t) -> Symbol.of_string n, t)
+  |> List.enum
+  |> SymbolTable.of_enum
 
 (** TODO: make SymbolTable a functor, typeEnv/valEnv submodule and
  * debug_print automatically works. *)

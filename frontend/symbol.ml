@@ -42,6 +42,7 @@ module SymbolTable : sig
   val empty : 'a t
   val enter : Symbol.t -> 'a -> 'a t -> 'a t
   val look : Symbol.t -> 'a t -> 'a option
+  val of_enum : (Symbol.t * 'a) Enum.t -> 'a t
   val debug_print : ('a -> string) -> 'a t -> unit
 end =
   struct
@@ -58,6 +59,8 @@ end =
       if Table.mem sym table then
         Some (Table.find sym table)
       else None
+
+    let of_enum enum = Table.of_enum enum
 
     let debug_print (f : 'a -> string) table =
       Table.iter (fun k v ->
