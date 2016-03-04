@@ -29,15 +29,18 @@ module SparcFrame : Frame = struct
     "sp"; "fp"
   ]
 
-  module RegMap = Map.Make(String)
+  (* maps from name to temp *)
+  module RegNameMap = Map.Make(String)
+  (* maps from temp to name*)
+  module RegMap = Map.Make(struct type t = Temp.temp let compare = compare end)
 
-  let reg_map = List.map
+  let reg_name_map = List.map
       (fun reg -> reg, Temp.new_temp()) registers
                 |> List.enum
-                |> RegMap.of_enum
+                |> RegNameMap.of_enum
 
-  let get_register reg =
-    RegMap.find reg reg_map
+  let get_register name =
+    RegNameMap.find name reg_name_map
 
   let count_locals = ref 0
 

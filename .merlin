@@ -1,7 +1,9 @@
-S src
+S frontend
+S backend
 S tests
 B _build
-B _build/src
+B _build/frontend
+B _build/backend
 B _build/tests
 PKG Batteries
 PKG OUnit
