@@ -17,6 +17,10 @@ module type Frame = sig
   (** given a name, return the register *)
   val get_register : register -> Temp.temp
 
+  (** given a register, return its pre-defined name. If it has no
+      predefined name, a name starts with 'r' will be used. *)
+  val get_register_name : Temp.temp -> register
+
   (** [new_frame name formals] create a frame named l. A list of
       bool indicates whether each formal argument escapes. *)
   val new_frame : Temp.label -> bool list -> frame

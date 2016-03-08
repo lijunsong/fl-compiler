@@ -39,8 +39,19 @@ module SparcFrame : Frame = struct
                 |> List.enum
                 |> RegNameMap.of_enum
 
-  let get_register name =
+  let reg_map = RegNameMap.enum reg_name_map
+              |> Enum.map (fun (a,b)->b,a)
+              |> RegMap.of_enum
+
+  let get_register (name : register) =
     RegNameMap.find name reg_name_map
+
+  let get_register_name (reg : Temp.temp) =
+    try
+      RegMap.find reg reg_map
+    with
+    | _ -> Temp.temp_to_string reg
+
 
   let count_locals = ref 0
 

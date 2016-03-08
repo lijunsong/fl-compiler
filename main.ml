@@ -166,7 +166,7 @@ let print () =
   | ASSEM(instr_list) ->
     List.iter (fun instr_list ->
         List.iter (fun instr ->
-            let s = Codegen.format Temp.temp_to_string instr in
+            let s = Codegen.format Translate.F.get_register_name instr in
             print_endline s) instr_list)
       instr_list
 
