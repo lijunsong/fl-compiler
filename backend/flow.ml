@@ -1,30 +1,42 @@
 open Assem
-open Sexplib.Std
-open Sexplib
 open Batteries
+open Util
 
 type node = {
+  id : int;  (* identify nodes *)
   def : Temp.temp list;
   use : Temp.temp list;
   ismove : bool;
   mutable succ: node list;
   mutable pred: node list;
   mutable live_out:  Temp.temp list;
-} with sexp
+}
 
-type flowgraph = node list with sexp
+type flowgraph = node list
 
 module LabelMap = Map.Make(struct
     type t = Temp.label
     let compare = compare
   end)
 
-(** Convert instructions to a directed graph.
- *
- * Note: theoretically, all instruction except label will always have
- * its previous instruction as pred, but we might sometimes want to
- * feed a non-canonical IR. So I'll always check whether previous IR
- * falls through. *)
+let id = ref (-1)
+
+let newid () =
+  incr id;
+  !id
+
+let node_to_string node =
+  let succid = List.map (fun n->n.id) node.succ in
+  let predid = List.map (fun n->n.id) node.pred in
+  Printf.sprintf "{id=(%d); pred=(%s); succ=(%s)}"
+    node.id
+    (String.concat "," (List.map string_of_int predid))
+    (String.concat "," (List.map string_of_int succid))
+
+let to_string graph =
+  String.concat "\n" (List.map node_to_string graph)
+
+(** Convert instructions to a directed graph. *)
 let instrs2graph instrs : flowgraph =
   (* iterate all instrs and construct a node for each
      instruct. Map label to its position (index) for future
@@ -33,15 +45,15 @@ let instrs2graph instrs : flowgraph =
     match instrs with
     | [] -> List.rev nodes, map
     | OP (ass, def, use, _) :: rest ->
-      let nodes' = {def; use; ismove=false;
+      let nodes' = {id=newid(); def; use; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx + 1) rest nodes' map
     | LABEL (ass, l) :: rest ->
-      let nodes' = {def=[]; use=[]; ismove=false;
+      let nodes' = {id=newid(); def=[]; use=[]; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx + 1) rest nodes' (LabelMap.add l idx map)
     | MOVE (ass, dst, src) :: rest ->
-      let nodes' = {def=[dst]; use=[src]; ismove=false;
+      let nodes' = {id=newid(); def=[dst]; use=[src]; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx+1) rest nodes' map
   in
@@ -53,14 +65,10 @@ let instrs2graph instrs : flowgraph =
   let add_pred node pred = node.pred <- pred :: node.pred in
   (* OK. start to fill in succ and pred details *)
   let connect idx instr node : unit =
-    (* update this instruction's pred if previous instr falls
-       through *)
-    begin if idx <> 0 then
-        match List.nth instrs (idx-1) with
-        | OP (_, _, _, Some(_)) -> ()
-        | _ -> add_pred node (List.nth nodes (idx-1))
-    end;
-    (* update succ *)
+    (* update succ and update succ's pred.  NOTE: So, we don't need to
+     * update node's pred, because we have already updated this node's
+       pred during updating succ of previous nodes and succ of other
+       jump nodes *)
     let update_succ jmps = match jmps with
       | Some(labs) -> (* get succ from jump *)
         let lab_idx = List.map (fun l -> LabelMap.find l labelMap) labs in
@@ -79,15 +87,15 @@ let instrs2graph instrs : flowgraph =
         add_pred succ node
     in
     match instr with
-      | OP (_, _, _, jmps) -> update_succ jmps
-      | _ -> update_succ None
+    | OP (_, _, _, jmps) -> update_succ jmps
+    | _ -> update_succ None
   in
-  List.iteri (fun idx (instr, node) -> connect idx instr node)
+  List.iteri (fun idx (instr, node) ->
+      connect idx instr node;
+      if !Debug.debug then begin
+        print_string (Codegen.format Translate.F.get_register_name instr);
+        print_string " -> ";
+        print_endline (node_to_string node)
+      end)
     (List.combine instrs nodes);
   nodes
-
-let node_to_string node =
-  Sexp.to_string_hum (sexp_of_node node)
-
-let to_string graph =
-  String.concat "\n" (List.map node_to_string graph)

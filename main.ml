@@ -71,36 +71,36 @@ let to_canon () =
   to_ir ();
   match !program with
   | IR(frags) ->
-     let progs, strs = List.partition
-                         (fun frag -> match frag with
-                                   | Translate.F.PROC (_) -> true
-                                   | _ -> false) frags in
-     let canon =
-       List.map (fun frag -> match frag with
-                          | Translate.F.PROC (ir, fm) -> Canon.linearize ir, fm
-                          | Translate.F.STRING (_) -> failwith "unreachable"
-                ) progs in
-     program := CANON(canon, strs)
+    let progs, strs = List.partition
+        (fun frag -> match frag with
+           | Translate.F.PROC (_) -> true
+           | _ -> false) frags in
+    let canon =
+      List.map (fun frag -> match frag with
+          | Translate.F.PROC (ir, fm) -> Canon.linearize ir, fm
+          | Translate.F.STRING (_) -> failwith "unreachable"
+        ) progs in
+    program := CANON(canon, strs)
   | _ -> failwith "unreachable"
 
 let to_blocks () =
   to_canon ();
   match !program with
   | CANON(ir_list, strs) ->
-     let bbs = List.map (fun (ir,fm) ->
-                   let bb, l = Canon.basic_blocks ir in
-                   bb, l, fm) ir_list in
-     program := BLOCKS(bbs, strs)
+    let bbs = List.map (fun (ir,fm) ->
+        let bb, l = Canon.basic_blocks ir in
+        bb, l, fm) ir_list in
+    program := BLOCKS(bbs, strs)
   | _ -> failwith "unreachable"
 
 let to_trace () =
   to_blocks ();
   match !program with
   | BLOCKS(bbs, strs) ->
-     let traced = List.map (fun (bb,l,fm) ->
-                      let list = Canon.trace_schedule (bb, l) in
-                      list, fm) bbs in
-     program := TRACE(traced, strs)
+    let traced = List.map (fun (bb,l,fm) ->
+        let list = Canon.trace_schedule (bb, l) in
+        list, fm) bbs in
+    program := TRACE(traced, strs)
   | _ -> failwith "unreachable"
 
 let to_assem () =
@@ -122,11 +122,11 @@ let to_flowgraph () =
 
 let print () =
   let print_ir_list list =
-     List.iter (fun stmt ->
-         let sexp = Ir.sexp_of_stmt stmt in
-         Sexp.output_hum Pervasives.stdout sexp;
-         print_string "\n";
-       ) list
+    List.iter (fun stmt ->
+        let sexp = Ir.sexp_of_stmt stmt in
+        Sexp.output_hum Pervasives.stdout sexp;
+        print_string "\n";
+      ) list
   in
   let print_str_list list =
     print_string "strings: \n";
@@ -143,32 +143,32 @@ let print () =
     let sexp = S.sexp_of_exp ast in
     Sexp.output_hum Pervasives.stdout sexp
   | CANON(proc_list, strs) ->
-     print_string "programs:\n";
-     List.iter (fun (ir_list, fm) ->
-         print_ir_list ir_list;
-         print_string "frames: \n";
-         Translate.F.debug_dump fm) proc_list;
-     print_str_list strs
+    print_string "programs:\n";
+    List.iter (fun (ir_list, fm) ->
+        print_ir_list ir_list;
+        print_string "frames: \n";
+        Translate.F.debug_dump fm) proc_list;
+    print_str_list strs
 
   | BLOCKS(bb_proc_list, label) ->
-     List.iter (fun (bb,l,fm) ->
-         Translate.F.debug_dump fm;
-         print_string ("label: " ^ (Temp.label_to_string l) ^ "\n");
-         List.iter (fun lst ->
-             print_string "block:\n";
-             print_ir_list lst) bb;
+    List.iter (fun (bb,l,fm) ->
+        Translate.F.debug_dump fm;
+        print_string ("label: " ^ (Temp.label_to_string l) ^ "\n");
+        List.iter (fun lst ->
+            print_string "block:\n";
+            print_ir_list lst) bb;
       ) bb_proc_list
   | TRACE(proc_list, strs) ->
-     List.iter (fun (ir_list, fm) ->
-         print_ir_list ir_list;
-       Translate.F.debug_dump fm) proc_list;
-     print_str_list strs
+    List.iter (fun (ir_list, fm) ->
+        print_ir_list ir_list;
+        Translate.F.debug_dump fm) proc_list;
+    print_str_list strs
   | IR(ir_list) ->
-     List.iter (fun ir ->
-         let sexp = Translate.sexp_of_frag ir in
-         Sexp.output_hum Pervasives.stdout sexp;
-         print_string "\n")
-       ir_list
+    List.iter (fun ir ->
+        let sexp = Translate.sexp_of_frag ir in
+        Sexp.output_hum Pervasives.stdout sexp;
+        print_string "\n")
+      ir_list
   | ASSEM(instr_list) ->
     List.iter (fun instr_list ->
         List.iter (fun instr ->
@@ -182,6 +182,7 @@ let print () =
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");
+  ("-debug", Arg.Set(Debug.debug), "open debug flag");
   ("-load", Arg.String(load), "load a tiger program");
   ("-ast", Arg.Unit(to_ast), "convert the program to an AST");
   ("-ir", Arg.Unit(to_ir), "convert the program to ir");
