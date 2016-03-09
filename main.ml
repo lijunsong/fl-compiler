@@ -21,10 +21,9 @@ type lang =
   | CANON of linear_proc list * string_frags
   | BLOCKS of bb_proc list * string_frags
   | TRACE of linear_proc list * string_frags
-
   | ASSEM of Assem.instr list list
   (** each function will generate a list of instr *)
-
+  | FLOW of Flow.flowgraph list
   | EMPTY
 
 let program = ref EMPTY
@@ -114,6 +113,13 @@ let to_assem () =
     program := ASSEM(res)
   | _ -> failwith "unreachable"
 
+let to_flowgraph () =
+  to_assem();
+  match !program with
+  | ASSEM (assms) ->
+    program := FLOW (List.map Flow.instrs2graph assms)
+  | _ -> failwith "unreachable"
+
 let print () =
   let print_ir_list list =
      List.iter (fun stmt ->
@@ -169,6 +175,10 @@ let print () =
             let s = Codegen.format Translate.F.get_register_name instr in
             print_endline s) instr_list)
       instr_list
+  | FLOW(graphs) ->
+    let str_list = List.map Flow.to_string graphs in
+    let str = String.concat "------\n" str_list in
+    print_endline str
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");

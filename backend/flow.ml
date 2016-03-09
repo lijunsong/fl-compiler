@@ -1,4 +1,6 @@
 open Assem
+open Sexplib.Std
+open Sexplib
 open Batteries
 
 type node = {
@@ -8,9 +10,9 @@ type node = {
   mutable succ: node list;
   mutable pred: node list;
   mutable live_out:  Temp.temp list;
-}
+} with sexp
 
-type flowgraph = node list
+type flowgraph = node list with sexp
 
 module LabelMap = Map.Make(struct
     type t = Temp.label
@@ -23,22 +25,22 @@ module LabelMap = Map.Make(struct
  * its previous instruction as pred, but we might sometimes want to
  * feed a non-canonical IR. So I'll always check whether previous IR
  * falls through. *)
-let instrs2graph instrs =
+let instrs2graph instrs : flowgraph =
   (* iterate all instrs and construct a node for each
      instruct. Map label to its position (index) for future
      reference. *)
-  let rec conv idx instrs nodes map : node list * LabelMap.t =
+  let rec conv idx instrs nodes map : node list * (int LabelMap.t) =
     match instrs with
     | [] -> List.rev nodes, map
     | OP (ass, def, use, _) :: rest ->
       let nodes' = {def; use; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx + 1) rest nodes' map
-    | LABEL (ass, l) ->
+    | LABEL (ass, l) :: rest ->
       let nodes' = {def=[]; use=[]; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
-      conv (idx + 1) rest nodes' (LabelMap.add l idx labelMap)
-    | MOVE (ass, dst, src) ->
+      conv (idx + 1) rest nodes' (LabelMap.add l idx map)
+    | MOVE (ass, dst, src) :: rest ->
       let nodes' = {def=[dst]; use=[src]; ismove=false;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx+1) rest nodes' map
@@ -50,7 +52,7 @@ let instrs2graph instrs =
   let get_node i = List.nth nodes i in
   let add_pred node pred = node.pred <- pred :: node.pred in
   (* OK. start to fill in succ and pred details *)
-  let connect idx instr node =
+  let connect idx instr node : unit =
     (* update this instruction's pred if previous instr falls
        through *)
     begin if idx <> 0 then
@@ -77,8 +79,15 @@ let instrs2graph instrs =
         add_pred succ node
     in
     match instr with
-    | OP (_, _, _, jmps) -> update_succ jmps
-    | _ -> update_succ None
+      | OP (_, _, _, jmps) -> update_succ jmps
+      | _ -> update_succ None
   in
-  List.mapi (fun idx (instr, node) -> connect idx instr node)
-    (List.combine instrs nodes)
+  List.iteri (fun idx (instr, node) -> connect idx instr node)
+    (List.combine instrs nodes);
+  nodes
+
+let node_to_string node =
+  Sexp.to_string_hum (sexp_of_node node)
+
+let to_string graph =
+  String.concat "\n" (List.map node_to_string graph)
