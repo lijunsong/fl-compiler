@@ -189,6 +189,7 @@ let specs = [
   ("-basicblock", Arg.Unit(to_blocks), "convert the program to basic blocks");
   ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
   ("-codegen", Arg.Unit(to_assem), "convert the program to assembly Lang (Sparc for now)");
+  ("-flowgraph", Arg.Unit(to_flowgraph), "generate flow graph of the program");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");
 ]
