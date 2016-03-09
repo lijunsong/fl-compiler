@@ -8,4 +8,4 @@ B _build/tests
 PKG Batteries
 PKG OUnit
 PKG Sexplib
-EXT Sexplib.syntax
+EXT Pa_sexp_conv
