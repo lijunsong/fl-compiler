@@ -53,7 +53,7 @@ let instrs2graph instrs : flowgraph =
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx + 1) rest nodes' (LabelMap.add l idx map)
     | MOVE (ass, dst, src) :: rest ->
-      let nodes' = {id=newid(); def=[dst]; use=[src]; ismove=false;
+      let nodes' = {id=newid(); def=[dst]; use=[src]; ismove=true;
                     succ=[]; pred=[]; live_out=[]} :: nodes in
       conv (idx+1) rest nodes' map
   in
