@@ -6,7 +6,7 @@ open Batteries
 
 type node = {
   temp: temp;
-  adj: temp list ref;
+  mutable adj: TempSet.t;
 }
 
 type igraph = node list
@@ -27,7 +27,7 @@ module IdSet = Set.Make (struct
 let union_list (list : IdSet.t list) =
   IdSet.fold (fun elt init -> IdSet.union elt init) list
 
-(** Compute IN and OUT set:
+(** Helper function: Compute IN and OUT set:
  *
  * OUT = Sum pred's IN
  * IN  = use + (OUT - def)
@@ -73,10 +73,64 @@ let rec trace_liveout fnodes : unit =
     trace_liveout fnodes
   else ()
 
+
+(**/ interference graph functions *)
+
+(** Helper function: given a set of def temps, live_out temps and
+    pool, return inodes for def temps, live_out, and a new pool *)
+let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : TempMap.t) =
+  (* iteration to get inodes and pool. *)
+  let rec temps_to_inodes (temps : temp list) inodes pool : node list * pool =
+    match temps with
+    | [] -> inodes, pool
+    | temp :: rest ->
+      if TempMap.mem temp pool then
+        let node = TempMap.find temp pool in
+        temps_to_inodes rest (node :: inodes) pool
+      else
+        let node = { temp = temp; adj = TempSet.empty } in
+        let pool' = TempMap.add temp node pool in
+        temps_to_inodes rest (node :: inodes) pool'
+  in
+  let def, pool' = temps_to_inodes (TempSet.to_list defs) [] pool in
+  let live_out, pool'' = temps_to_inodes (TempSet.to_list live_out) [] pool' in
+  def, live_out, pool''
+
+(* add edges between two sets, given by nodes0 and nodes1 *)
+let add_edge nodes0 nodes1 =
+  let rec add nodes =
+    match nodes with
+    | [] -> ()
+    | src :: rest ->
+      List.iter (fun dst ->
+          src.adj <- TempSet.add dst src.adj;
+          dst.adj <- TempSet.add src dst.adj;) nodes1;
+      add rest nodes1
+  in
+  if nodes0 = [] || nodes1 = [] then
+    ()
+  else
+    add nodes0
+
+
 (** Helper function: compute interference graph from given flow graph
     where live_out info has been filled. *)
 let get_igraph fnodes : igraph =
-  []
+  let make_graph fnodes temp_pool : temp_pool =
+    match fnodes with
+    | [] -> temp_pool
+    | fnode :: rest ->
+      (* get the corresponding inode for def and live_out *)
+      let def_inodes, live_out_inodes, temp_pool' =
+        new_inode fnode.flownode.def fnode.flownode.live_out temp_pool
+      in
+      (* add an edge between def and live_out *)
+      add_edges def_inodes live_out_inodes;
+      make_graph rest temp_pool'
+  in
+  let pool = make_graph fnodes TempMap.empty in
+  TempMap.values map
+  |> List.of_enum
 
 (** Compute interference graph (igraph): compute live out information
     before computing interference graph. *)

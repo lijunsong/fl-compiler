@@ -25,3 +25,5 @@ val named_label : string -> label
 module LabelMap : BatMap.S with type key = label
 
 module TempSet : BatSet.S with type elt = temp
+
+module TempMap : BatMap.S with type key = temp
