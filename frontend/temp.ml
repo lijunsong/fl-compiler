@@ -29,3 +29,8 @@ let named_label name =
   Symbol.of_string name
 
 module LabelMap = Map.Make(Symbol)
+
+module TempSet = Set.Make(struct
+    type t = temp
+    let compare = compare
+  end)

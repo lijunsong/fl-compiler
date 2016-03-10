@@ -4,22 +4,23 @@ open Util
 
 type node = {
   id : int;  (* identify nodes *)
-  def : Temp.temp list;
-  use : Temp.temp list;
+  def : Temp.TempSet.t;
+  use : Temp.TempSet.t;
   ismove : bool;
   mutable succ: node list;
   mutable pred: node list;
-  mutable live_out:  Temp.temp list;
+  mutable live_out: Temp.TempSet.t;
 }
 
 type flowgraph = node list
 
-module LabelMap = Map.Make(struct
-    type t = Temp.label
-    let compare = compare
-  end)
+module LabelMap = Temp.LabelMap
 
 let id = ref (-1)
+
+let singleton = Temp.TempSet.singleton
+
+let empty = Temp.TempSet.empty
 
 let newid () =
   incr id;
@@ -36,6 +37,7 @@ let node_to_string node =
 let to_string graph =
   String.concat "\n" (List.map node_to_string graph)
 
+
 (** Convert instructions to a directed graph. *)
 let instrs2graph instrs : flowgraph =
   (* iterate all instrs and construct a node for each
@@ -45,16 +47,19 @@ let instrs2graph instrs : flowgraph =
     match instrs with
     | [] -> List.rev nodes, map
     | OP (ass, def, use, _) :: rest ->
-      let nodes' = {id=newid(); def; use; ismove=false;
-                    succ=[]; pred=[]; live_out=[]} :: nodes in
+      let nodes' = {id=newid(); def=Temp.TempSet.of_list def;
+                    use=Temp.TempSet.of_list use; ismove=false;
+                    succ=[]; pred=[]; live_out=empty} :: nodes in
       conv (idx + 1) rest nodes' map
     | LABEL (ass, l) :: rest ->
-      let nodes' = {id=newid(); def=[]; use=[]; ismove=false;
-                    succ=[]; pred=[]; live_out=[]} :: nodes in
+      let nodes' = {id=newid(); def=empty;
+                    use=empty; ismove=false;
+                    succ=[]; pred=[]; live_out=empty} :: nodes in
       conv (idx + 1) rest nodes' (LabelMap.add l idx map)
     | MOVE (ass, dst, src) :: rest ->
-      let nodes' = {id=newid(); def=[dst]; use=[src]; ismove=true;
-                    succ=[]; pred=[]; live_out=[]} :: nodes in
+      let nodes' = {id=newid(); def=singleton dst;
+                    use=singleton src; ismove=true;
+                    succ=[]; pred=[]; live_out=empty} :: nodes in
       conv (idx+1) rest nodes' map
   in
   (* get nodes and labelMap *)

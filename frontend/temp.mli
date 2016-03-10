@@ -10,8 +10,6 @@ type label with sexp
   infinite *)
 type temp with sexp
 
-module LabelMap : BatMap.S with type key = label
-
 val new_temp : unit -> temp
 
 val temp_to_string : temp -> string
@@ -23,3 +21,7 @@ val label_to_string : label -> string
 (** Returns a new label whose assembly language name is the given
   string *)
 val named_label : string -> label
+
+module LabelMap : BatMap.S with type key = label
+
+module TempSet : BatSet.S with type elt = temp
