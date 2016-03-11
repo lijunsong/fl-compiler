@@ -118,8 +118,17 @@ let get_igraph fnodes : igraph =
       let def_inodes, live_out_inodes, temp_pool' =
         new_inode fnode.Flow.def fnode.Flow.live_out temp_pool
       in
+      (* filter out the use of a move from the live_out_inodes:
+         a <- c does not interfere.*)
+      let live_out_inodes' = if not fnode.Flow.ismove then
+          live_out_inodes
+        else
+          let live_out_temps = TempSet.diff fnode.Flow.live_out fnode.Flow.use in
+          List.map (fun temp ->
+              TempMap.find temp temp_pool') (TempSet.to_list live_out_temps)
+      in
       (* add an edge between def and live_out *)
-      add_edge def_inodes live_out_inodes;
+      add_edge def_inodes live_out_inodes';
       make_graph rest temp_pool'
   in
   let pool = make_graph fnodes TempMap.empty in
