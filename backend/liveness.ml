@@ -11,21 +11,15 @@ type node = {
 
 type igraph = node list
 
-type fnode = {
-  flownode: Flow.node;
-  mutable live_in: TempSet.t
-}
-(** fnode is for computing live in and live out information. *)
-
 (* a set for cache fnode *)
 module IdSet = Set.Make (struct
     type t = int
-    let compare = comapre
+    let compare = compare
   end)
 
 (* union across a list of set *)
-let union_list (list : IdSet.t list) =
-  IdSet.fold (fun elt init -> IdSet.union elt init) list
+let union_list (list : TempSet.t list) =
+  List.fold_right (fun elt init -> TempSet.union elt init) list TempSet.empty
 
 (** Helper function: Compute IN and OUT set:
  *
@@ -40,36 +34,36 @@ let union_list (list : IdSet.t list) =
 
 let rec trace_liveout fnodes : unit =
   (* compute OUT and IN. return true if any info changed, false otherwise. *)
-  let fnode_liveness fnode : bool =
-    let pred_livein = IdSet.map (fun fnode->fnode.live_in) fnode.flownode.pred in
+  let fnode_liveness (fnode : Flow.node) : bool =
+    let pred_livein = List.map (fun n->n.Flow.live_in) fnode.Flow.pred in
     (* compute OUT first and then IN *)
     let new_out = union_list pred_livein in
-    let new_in = IdSet.union fnode.flownode.use
-        (IdSet.diff new_out fnode.flownode.def) in
-    if IdSet.equal new_in fnode.live_in &&
-       IdSet.equal new_out fnode.flownode.live_out then
+    let new_in = TempSet.union fnode.Flow.use
+        (TempSet.diff new_out fnode.Flow.def) in
+    if TempSet.equal new_in fnode.Flow.live_in &&
+       TempSet.equal new_out fnode.Flow.live_out then
       false
     else begin
-      fnode.flownode.live_out <- new_out;
-      fnode.live_in <- new_in;
+      fnode.Flow.live_out <- new_out;
+      fnode.Flow.live_in <- new_in;
       true
     end
   in
-  let trace_iter stack visited changed : bool =
+  let rec trace_iter stack visited changed : bool =
     match stack with
     | [] -> changed
-    | fnode :: rest when IdSet.mem fnode.flownode.id visited ->
+    | fnode :: rest when IdSet.mem fnode.Flow.id visited ->
       trace_iter rest visited changed
     | fnode :: rest ->
       let changed' = changed || fnode_liveness fnode in
-      let stack' = fnode.flownode.pred @ rest in
-      let visited' = IdSet.add fnode.flownode.id visited in
+      let stack' = fnode.Flow.pred @ rest in
+      let visited' = IdSet.add fnode.Flow.id visited in
       trace_iter stack' visited' changed'
   in
   (* start from the pred of the last flowgraph node *)
   let last = List.last fnodes in
   (* OK, now compute until we reach a fix point. *)
-  if trace_iter last.flownode.pred IdSet.empty false then
+  if trace_iter last.Flow.pred IdSet.empty false then
     trace_liveout fnodes
   else ()
 
@@ -78,9 +72,9 @@ let rec trace_liveout fnodes : unit =
 
 (** Helper function: given a set of def temps, live_out temps and
     pool, return inodes for def temps, live_out, and a new pool *)
-let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : TempMap.t) =
+let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : node TempMap.t) =
   (* iteration to get inodes and pool. *)
-  let rec temps_to_inodes (temps : temp list) inodes pool : node list * pool =
+  let rec temps_to_inodes (temps : temp list) inodes pool : node list * node TempMap.t =
     match temps with
     | [] -> inodes, pool
     | temp :: rest ->
@@ -97,15 +91,15 @@ let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : TempMap.t) =
   def, live_out, pool''
 
 (* add edges between two sets, given by nodes0 and nodes1 *)
-let add_edge nodes0 nodes1 =
+let add_edge (nodes0 : node list) (nodes1 : node list) : unit =
   let rec add nodes =
     match nodes with
     | [] -> ()
     | src :: rest ->
       List.iter (fun dst ->
-          src.adj <- TempSet.add dst src.adj;
-          dst.adj <- TempSet.add src dst.adj;) nodes1;
-      add rest nodes1
+          src.adj <- TempSet.add dst.temp src.adj;
+          dst.adj <- TempSet.add src.temp dst.adj;) nodes1;
+      add rest
   in
   if nodes0 = [] || nodes1 = [] then
     ()
@@ -116,27 +110,31 @@ let add_edge nodes0 nodes1 =
 (** Helper function: compute interference graph from given flow graph
     where live_out info has been filled. *)
 let get_igraph fnodes : igraph =
-  let make_graph fnodes temp_pool : temp_pool =
+  let rec make_graph fnodes temp_pool : node TempMap.t =
     match fnodes with
     | [] -> temp_pool
     | fnode :: rest ->
       (* get the corresponding inode for def and live_out *)
       let def_inodes, live_out_inodes, temp_pool' =
-        new_inode fnode.flownode.def fnode.flownode.live_out temp_pool
+        new_inode fnode.Flow.def fnode.Flow.live_out temp_pool
       in
       (* add an edge between def and live_out *)
-      add_edges def_inodes live_out_inodes;
+      add_edge def_inodes live_out_inodes;
       make_graph rest temp_pool'
   in
   let pool = make_graph fnodes TempMap.empty in
-  TempMap.values map
+  TempMap.values pool
   |> List.of_enum
 
 (** Compute interference graph (igraph): compute live out information
     before computing interference graph. *)
-let flow2igraph (flowg : Flow.node) : igraph =
-  (* add live_in in flow graph *)
-  let fnodes = List.map (fun flownode->
-    {flownode; live_in=TempSet.empty}) flowg in
-  trace_liveout fnodes;
-  get_igraph fnodes
+let flow2igraph (flowg : Flow.flowgraph) : igraph =
+  trace_liveout flowg;
+  get_igraph flowg
+
+let node_to_string node =
+  Printf.sprintf "%s: %s" (Temp.temp_to_string node.temp)
+    (String.concat ", " (List.map Temp.temp_to_string (TempSet.to_list node.adj)))
+
+let to_string igraph =
+  String.concat "\n" (List.map node_to_string igraph)

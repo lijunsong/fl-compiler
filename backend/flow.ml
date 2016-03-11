@@ -9,6 +9,8 @@ type node = {
   ismove : bool;
   mutable succ: node list;
   mutable pred: node list;
+  mutable live_in: Temp.TempSet.t;
+  (** avoid additional struct to record live_in infor*)
   mutable live_out: Temp.TempSet.t;
 }
 
@@ -43,23 +45,25 @@ let instrs2graph instrs : flowgraph =
   (* iterate all instrs and construct a node for each
      instruct. Map label to its position (index) for future
      reference. *)
+  let live_in = empty in
+  let live_out = empty in
   let rec conv idx instrs nodes map : node list * (int LabelMap.t) =
     match instrs with
     | [] -> List.rev nodes, map
     | OP (ass, def, use, _) :: rest ->
       let nodes' = {id=newid(); def=Temp.TempSet.of_list def;
                     use=Temp.TempSet.of_list use; ismove=false;
-                    succ=[]; pred=[]; live_out=empty} :: nodes in
+                    succ=[]; pred=[]; live_in; live_out} :: nodes in
       conv (idx + 1) rest nodes' map
     | LABEL (ass, l) :: rest ->
       let nodes' = {id=newid(); def=empty;
                     use=empty; ismove=false;
-                    succ=[]; pred=[]; live_out=empty} :: nodes in
+                    succ=[]; pred=[]; live_in; live_out} :: nodes in
       conv (idx + 1) rest nodes' (LabelMap.add l idx map)
     | MOVE (ass, dst, src) :: rest ->
       let nodes' = {id=newid(); def=singleton dst;
                     use=singleton src; ismove=true;
-                    succ=[]; pred=[]; live_out=empty} :: nodes in
+                    succ=[]; pred=[]; live_in; live_out} :: nodes in
       conv (idx+1) rest nodes' map
   in
   (* get nodes and labelMap *)

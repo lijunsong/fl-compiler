@@ -24,6 +24,7 @@ type lang =
   | ASSEM of Assem.instr list list
   (** each function will generate a list of instr *)
   | FLOW of Flow.flowgraph list
+  | INTERFERENCE of Liveness.igraph list
   | EMPTY
 
 let program = ref EMPTY
@@ -120,6 +121,13 @@ let to_flowgraph () =
     program := FLOW (List.map Flow.instrs2graph assms)
   | _ -> failwith "unreachable"
 
+let to_igraph () =
+  to_flowgraph();
+  match !program with
+  | FLOW (fgraph) ->
+    program := INTERFERENCE(List.map Liveness.flow2igraph fgraph)
+  | _ -> failwith "unreachable"
+
 let print () =
   let print_ir_list list =
     List.iter (fun stmt ->
@@ -179,6 +187,10 @@ let print () =
     let str_list = List.map Flow.to_string graphs in
     let str = String.concat "------\n" str_list in
     print_endline str
+  | INTERFERENCE(igraphs) ->
+    let str_list = List.map Liveness.to_string igraphs in
+    let str = String.concat "------\n" str_list in
+    print_endline str
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");
@@ -191,6 +203,7 @@ let specs = [
   ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
   ("-codegen", Arg.Unit(to_assem), "convert the program to assembly Lang (Sparc for now)");
   ("-flowgraph", Arg.Unit(to_flowgraph), "generate flow graph of the program");
+  ("-igraph", Arg.Unit(to_igraph), "generate interference graph of the program");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
   ("-p", Arg.Unit(print), "print the program");
 ]

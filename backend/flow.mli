@@ -5,6 +5,8 @@ type node = {
   ismove : bool;
   mutable succ: node list;
   mutable pred: node list;
+  mutable live_in: Temp.TempSet.t;
+  (** avoid additional struct to record live_in infor*)
   mutable live_out: Temp.TempSet.t;
 }
 
