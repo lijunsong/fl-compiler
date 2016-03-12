@@ -27,7 +27,7 @@ let set_to_str set =
 
 (** Helper function: Compute IN and OUT set:
  *
- * OUT = Sum pred's IN
+ * OUT = Sum succ's IN
  * IN  = use + (OUT - def)
  *
  * To make it converge fast, compute from the last node backwords
