@@ -21,6 +21,10 @@ module IdSet = Set.Make (struct
 let union_list (list : TempSet.t list) =
   List.fold_right (fun elt init -> TempSet.union elt init) list TempSet.empty
 
+let set_to_str set =
+  (String.concat "," (List.map temp_to_string
+                        (TempSet.to_list set)))
+
 (** Helper function: Compute IN and OUT set:
  *
  * OUT = Sum pred's IN
@@ -35,11 +39,14 @@ let union_list (list : TempSet.t list) =
 let rec trace_liveout fnodes : unit =
   (* compute OUT and IN. return true if any info changed, false otherwise. *)
   let fnode_liveness (fnode : Flow.node) : bool =
-    let pred_livein = List.map (fun n->n.Flow.live_in) fnode.Flow.pred in
+    let succ_livein = List.map (fun n->n.Flow.live_in) fnode.Flow.succ in
     (* compute OUT first and then IN *)
-    let new_out = union_list pred_livein in
+    let new_out = union_list succ_livein in
     let new_in = TempSet.union fnode.Flow.use
         (TempSet.diff new_out fnode.Flow.def) in
+    if !Debug.debug then
+      Printf.printf "for node %s: \nnew_in: %s\nnew_out: %s\n"
+        (Flow.node_to_string fnode) (set_to_str new_in) (set_to_str new_out);
     if TempSet.equal new_in fnode.Flow.live_in &&
        TempSet.equal new_out fnode.Flow.live_out then
       false
@@ -55,7 +62,11 @@ let rec trace_liveout fnodes : unit =
     | fnode :: rest when IdSet.mem fnode.Flow.id visited ->
       trace_iter rest visited changed
     | fnode :: rest ->
-      let changed' = changed || fnode_liveness fnode in
+      if !Debug.debug then
+        print_endline ("visit: " ^ Flow.node_to_string fnode);
+      (* NOTE: be aware of the short circuit. We need fnode_liveness's
+         side effect. *)
+      let changed' = fnode_liveness fnode || changed in
       let stack' = fnode.Flow.pred @ rest in
       let visited' = IdSet.add fnode.Flow.id visited in
       trace_iter stack' visited' changed'
@@ -64,7 +75,11 @@ let rec trace_liveout fnodes : unit =
   let last = List.last fnodes in
   (* OK, now compute until we reach a fix point. *)
   if trace_iter last.Flow.pred IdSet.empty false then
-    trace_liveout fnodes
+    begin
+      (if !Debug.debug then
+         print_endline ("--GRAPH---\n" ^ (Flow.to_string fnodes) ^ "\n---DONE---"));
+      trace_liveout fnodes
+    end
   else ()
 
 

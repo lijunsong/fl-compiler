@@ -29,16 +29,20 @@ let newid () =
   !id
 
 let node_to_string node =
+  let set_to_str set =
+    (String.concat "," (List.map Temp.temp_to_string
+                          (Temp.TempSet.to_list set)))
+  in
   let succid = List.map (fun n->n.id) node.succ in
   let predid = List.map (fun n->n.id) node.pred in
-  Printf.sprintf "{id=(%d); pred=(%s); succ=(%s)}; def=(%s); use=(%s)"
+  Printf.sprintf "{id=(%d); pred=(%s); succ=(%s); def=(%s); use=(%s); in=(%s); out=(%s)}"
     node.id
     (String.concat "," (List.map string_of_int predid))
     (String.concat "," (List.map string_of_int succid))
-    (String.concat "," (List.map Temp.temp_to_string
-                          (Temp.TempSet.to_list node.def)))
-    (String.concat "," (List.map Temp.temp_to_string
-                          (Temp.TempSet.to_list node.use)))
+    (set_to_str node.def)
+    (set_to_str node.use)
+    (set_to_str node.live_in)
+    (set_to_str node.live_out)
 
 let to_string graph =
   String.concat "\n" (List.map node_to_string graph)

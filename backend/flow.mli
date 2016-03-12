@@ -15,3 +15,5 @@ type flowgraph = node list
 val instrs2graph : Assem.instr list -> flowgraph
 
 val to_string : flowgraph -> string
+
+val node_to_string : node -> string
