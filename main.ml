@@ -124,6 +124,7 @@ let to_regalloc () =
     program := REGISTER_ALLOC(
         List.map Register_allocation.alloc assems
       )
+  | _ -> failwith "Can't go back to previous compilation process."
 
 let to_flowgraph () =
   to_assem();
@@ -203,16 +204,20 @@ let print () =
     let str_list = List.map Liveness.to_string igraphs in
     let str = String.concat "------\n" str_list in
     print_endline str
-  | REGISTER_ALLOCATION (allocs) ->
+  | REGISTER_ALLOC (allocs) ->
     let str_list = List.map (fun (instrs,alloc) ->
         let alloc_str = Color.allocation_to_string alloc in
         let get_register_name tmp = Temp.TempMap.find tmp alloc in
-        let instr_str = Codegen.format get_register_name instr in
-        "---- instruction ----" ^ instr_str ^ "\n---allocation---\n"
+        let instrs_str = List.map (fun instr ->
+            let instr_str = Codegen.format get_register_name instr in
+            instr_str
+          ) instrs
+                         |> String.concat "\n" in
+        "---- instruction ----\n" ^ instrs_str ^ "\n---allocation---\n"
         ^ alloc_str ^ "---end---\n"
       ) allocs in
     let str = String.concat "------\n" str_list in
-    print_endline str;
+    print_endline str
 
 
 let specs = [

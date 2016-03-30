@@ -10,19 +10,58 @@ type status =
   | Removed
   | Colored of string
 
-type node = {
-  temp: temp;
-  mutable adj: TempSet.t;
-  mutable status : status ref;
-}
+module rec Node : sig
+  type t = {
+    temp: temp;
+    mutable adj: NodeSet.t;
+    mutable status : status ref;
+  }
+  val compare : t -> t -> int
+end = struct
+  type t = {
+    temp: temp;
+    mutable adj: NodeSet.t;
+    mutable status : status ref;
+  }
+  let compare a b = compare a.temp b.temp
+end
+and NodeSet : (Set.S with type elt = Node.t) = Set.Make(Node)
 
-type igraph = node list
+type igraph = Node.t list
 
 (* a set for cache fnode *)
 module IdSet = Set.Make (struct
     type t = int
     let compare = compare
   end)
+
+let status_to_string = function
+  | Ingraph (n) -> sprintf "Ingraph(%d)" n
+  | Removed -> "Removed"
+  | Colored (reg) -> sprintf "Colored(%s)" reg
+
+let node_to_string node =
+  Printf.sprintf "%s (%s): %s" (Temp.temp_to_string node.Node.temp)
+    (status_to_string !(node.Node.status))
+    (String.concat ", " (List.map Temp.temp_to_string
+                           (List.map (fun n -> n.Node.temp)
+                              (NodeSet.to_list node.Node.adj))))
+
+let to_string igraph =
+  String.concat "\n" (List.map node_to_string igraph)
+
+let decrease_degree (node : Node.t) : unit =
+  match ! (node.Node.status) with
+  | Ingraph (n) when n > 0 ->
+    node.Node.status := Ingraph (n-1)
+  | Ingraph (0) -> failwith (sprintf "node %s has degree 0 already" (Temp.temp_to_string node.Node.temp))
+  | _ -> failwith ("decrease_degree is applied on a non-ingraph node: " ^ (node_to_string node))
+
+let increase_degree (node : Node.t) : unit =
+  match ! (node.Node.status) with
+  | Ingraph(n) ->
+    node.Node.status := Ingraph(n+1)
+  | _ -> failwith ("increase_degree is applied on a non-ingraph node: " ^ (node_to_string node))
 
 (* union across a list of set *)
 let union_list (list : TempSet.t list) =
@@ -94,9 +133,9 @@ let rec trace_liveout fnodes : unit =
 
 (** Helper function: given a set of def temps, live_out temps and
     pool, return inodes for def temps, live_out, and a new pool *)
-let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : node TempMap.t) =
+let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : Node.t TempMap.t) =
   (* iteration to get inodes and pool. *)
-  let rec temps_to_inodes (temps : temp list) inodes pool : node list * node TempMap.t =
+  let rec temps_to_inodes (temps : temp list) inodes pool : Node.t list * Node.t TempMap.t =
     match temps with
     | [] -> inodes, pool
     | temp :: rest ->
@@ -104,7 +143,9 @@ let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : node TempMap.t) 
         let node = TempMap.find temp pool in
         temps_to_inodes rest (node :: inodes) pool
       else
-        let node = { temp = temp; adj = TempSet.empty } in
+        let node = { Node.temp = temp;
+                     Node.adj = NodeSet.empty;
+                     Node.status = ref (Ingraph 0) } in
         let pool' = TempMap.add temp node pool in
         temps_to_inodes rest (node :: inodes) pool'
   in
@@ -113,14 +154,24 @@ let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : node TempMap.t) 
   def, live_out, pool''
 
 (* add edges between two sets, given by nodes0 and nodes1 *)
-let add_edge (nodes0 : node list) (nodes1 : node list) : unit =
+let add_edge (nodes0 : Node.t list) (nodes1 : Node.t list) : unit =
+  if !Debug.debug then
+    printf "add_edge: [%s] <-> [%s]\n"
+      (String.concat ","
+         (List.map (fun n -> "{" ^ (node_to_string n) ^ "}") nodes0))
+      (String.concat ","
+         (List.map (fun n -> "{" ^ (node_to_string n) ^ "}") nodes1));
   let rec add nodes =
     match nodes with
     | [] -> ()
     | src :: rest ->
       List.iter (fun dst ->
-          src.adj <- TempSet.add dst.temp src.adj;
-          dst.adj <- TempSet.add src.temp dst.adj;) nodes1;
+          if not (src.Node.temp = dst.Node.temp) then begin
+            src.Node.adj <- NodeSet.add dst src.Node.adj;
+            dst.Node.adj <- NodeSet.add src dst.Node.adj;
+            increase_degree src;
+            increase_degree dst
+          end) nodes1;
       add rest
   in
   if nodes0 = [] || nodes1 = [] then
@@ -132,7 +183,7 @@ let add_edge (nodes0 : node list) (nodes1 : node list) : unit =
 (** Helper function: compute interference graph from given flow graph
     where live_out info has been filled. *)
 let get_igraph fnodes : igraph =
-  let rec make_graph fnodes temp_pool : node TempMap.t =
+  let rec make_graph fnodes temp_pool : Node.t TempMap.t =
     match fnodes with
     | [] -> temp_pool
     | fnode :: rest ->
@@ -140,14 +191,15 @@ let get_igraph fnodes : igraph =
       let def_inodes, live_out_inodes, temp_pool' =
         new_inode fnode.Flow.def fnode.Flow.live_out temp_pool
       in
-      (* filter out the use of a move from the live_out_inodes:
-         a <- c does not interfere.*)
-      let live_out_inodes' = if not fnode.Flow.ismove then
+      (* filter out the use of a move from the live_out_inodes: a <- c
+         does not interfere.  TODO: when coalscing is implemented, we
+         can claim that a<-c does not interfere*)
+      (*let live_out_inodes' = if not fnode.Flow.ismove then
           live_out_inodes
-        else
-          let live_out_temps = TempSet.diff fnode.Flow.live_out fnode.Flow.use in
-          List.map (fun temp ->
-              TempMap.find temp temp_pool') (TempSet.to_list live_out_temps)
+        else*)
+      let live_out_temps = TempSet.diff fnode.Flow.live_out fnode.Flow.use in
+      let live_out_inodes' = List.map (fun temp ->
+          TempMap.find temp temp_pool') (TempSet.to_list live_out_temps)
       in
       (* add an edge between def and live_out *)
       add_edge def_inodes live_out_inodes';
@@ -162,16 +214,3 @@ let get_igraph fnodes : igraph =
 let flow2igraph (flowg : Flow.flowgraph) : igraph =
   trace_liveout flowg;
   get_igraph flowg
-
-let status_to_string = function
-  | Ingraph (n) -> sprintf "Ingraph(%d)" n
-  | Removed -> "Removed"
-  | Colored (reg) -> sprintf "Colored(%s)" reg
-
-let node_to_string node =
-  Printf.sprintf "%s (%s): %s" (Temp.temp_to_string node.temp)
-    (status_to_string node.status)
-    (String.concat ", " (List.map Temp.temp_to_string (TempSet.to_list node.adj)))
-
-let to_string igraph =
-  String.concat "\n" (List.map node_to_string igraph)

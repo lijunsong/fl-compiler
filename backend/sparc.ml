@@ -23,6 +23,7 @@ module SparcFrame : Frame = struct
   with sexp
 
   let registers = [
+    "l0"; "l1"; "l2"; "l3"; "l4"; "l5"; "l6";
     "o0"; "o1"; "o2"; "o3"; "o4"; "o5"; "o6";
     "i0"; "i1"; "i2"; "i3"; "i4"; "i5"; "i6";
     "g0";

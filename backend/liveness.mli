@@ -6,13 +6,21 @@ type status =
   | Removed
   | Colored of string
 
-type node = {
-  temp: temp;
-  mutable adj: TempSet.t;
-  mutable status : status ref;
-}
+module rec Node : sig
+  type t = {
+    temp: temp;
+    mutable adj: NodeSet.t;
+    mutable status : status ref;
+  }
+  val compare : t -> t -> int
+end
+and NodeSet : (Set.S with type elt = Node.t)
 
-type igraph = node list
+type igraph = Node.t list
+
+val decrease_degree : Node.t -> unit
+
+val increase_degree : Node.t -> unit
 
 val flow2igraph : Flow.flowgraph -> igraph
 
