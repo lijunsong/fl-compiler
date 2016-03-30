@@ -3,10 +3,17 @@
 
 open Temp
 open Batteries
+open Printf
+
+type status =
+  | Ingraph of int
+  | Removed
+  | Colored of string
 
 type node = {
   temp: temp;
   mutable adj: TempSet.t;
+  mutable status : status ref;
 }
 
 type igraph = node list
@@ -156,8 +163,14 @@ let flow2igraph (flowg : Flow.flowgraph) : igraph =
   trace_liveout flowg;
   get_igraph flowg
 
+let status_to_string = function
+  | Ingraph (n) -> sprintf "Ingraph(%d)" n
+  | Removed -> "Removed"
+  | Colored (reg) -> sprintf "Colored(%s)" reg
+
 let node_to_string node =
-  Printf.sprintf "%s: %s" (Temp.temp_to_string node.temp)
+  Printf.sprintf "%s (%s): %s" (Temp.temp_to_string node.temp)
+    (status_to_string node.status)
     (String.concat ", " (List.map Temp.temp_to_string (TempSet.to_list node.adj)))
 
 let to_string igraph =

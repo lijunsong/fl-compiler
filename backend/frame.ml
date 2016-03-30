@@ -17,6 +17,9 @@ module type Frame = sig
   (** given a name, return the register *)
   val get_register : register -> Temp.temp
 
+  (** known temporaries *)
+  val reg_allocation : register Temp.TempMap.t
+
   (** given a register, return its pre-defined name. If it has no
       predefined name, a name starts with 'r' will be used. *)
   val get_register_name : Temp.temp -> register

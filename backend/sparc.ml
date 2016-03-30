@@ -32,14 +32,14 @@ module SparcFrame : Frame = struct
   (* maps from name to temp *)
   module RegNameMap = Map.Make(String)
   (* maps from temp to name*)
-  module RegMap = Map.Make(struct type t = Temp.temp let compare = compare end)
+  module RegMap = Temp.TempMap
 
   let reg_name_map = List.map
       (fun reg -> reg, Temp.new_temp()) registers
                 |> List.enum
                 |> RegNameMap.of_enum
 
-  let reg_map = RegNameMap.enum reg_name_map
+  let reg_allocation = RegNameMap.enum reg_name_map
               |> Enum.map (fun (a,b)->b,a)
               |> RegMap.of_enum
 
@@ -48,7 +48,7 @@ module SparcFrame : Frame = struct
 
   let get_register_name (reg : Temp.temp) =
     try
-      RegMap.find reg reg_map
+      RegMap.find reg reg_allocation
     with
     | _ -> Temp.temp_to_string reg
 

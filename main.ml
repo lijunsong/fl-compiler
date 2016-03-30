@@ -25,6 +25,9 @@ type lang =
   (** each function will generate a list of instr *)
   | FLOW of Flow.flowgraph list
   | INTERFERENCE of Liveness.igraph list
+  | REGISTER_ALLOC of (Assem.instr list * Register_allocation.allocation) list
+  (** Register_alloc will generate instructions and all temporaries
+      are maped in allocation *)
   | EMPTY
 
 let program = ref EMPTY
@@ -114,6 +117,14 @@ let to_assem () =
     program := ASSEM(res)
   | _ -> failwith "unreachable"
 
+let to_regalloc () =
+  to_assem();
+  match !program with
+  | ASSEM (assems) ->
+    program := REGISTER_ALLOC(
+        List.map Register_allocation.alloc assems
+      )
+
 let to_flowgraph () =
   to_assem();
   match !program with
@@ -127,6 +138,7 @@ let to_igraph () =
   | FLOW (fgraph) ->
     program := INTERFERENCE(List.map Liveness.flow2igraph fgraph)
   | _ -> failwith "unreachable"
+
 
 let print () =
   let print_ir_list list =
@@ -191,6 +203,17 @@ let print () =
     let str_list = List.map Liveness.to_string igraphs in
     let str = String.concat "------\n" str_list in
     print_endline str
+  | REGISTER_ALLOCATION (allocs) ->
+    let str_list = List.map (fun (instrs,alloc) ->
+        let alloc_str = Color.allocation_to_string alloc in
+        let get_register_name tmp = Temp.TempMap.find tmp alloc in
+        let instr_str = Codegen.format get_register_name instr in
+        "---- instruction ----" ^ instr_str ^ "\n---allocation---\n"
+        ^ alloc_str ^ "---end---\n"
+      ) allocs in
+    let str = String.concat "------\n" str_list in
+    print_endline str;
+
 
 let specs = [
   ("-stdin", Arg.Unit(load_stdin), "load a tiger program from stdin");
@@ -201,7 +224,8 @@ let specs = [
   ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
   ("-basicblock", Arg.Unit(to_blocks), "convert the program to basic blocks");
   ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
-  ("-codegen", Arg.Unit(to_assem), "convert the program to assembly Lang (Sparc for now)");
+  ("-codegen0", Arg.Unit(to_assem), "convert the program to assembly Lang without register allocation (Sparc for now)");
+  ("-codegen1", Arg.Unit(to_regalloc), "convert the program to assembly Lang with register allocation (Sparc for now)");
   ("-flowgraph", Arg.Unit(to_flowgraph), "generate flow graph of the program");
   ("-igraph", Arg.Unit(to_igraph), "generate interference graph of the program");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");
