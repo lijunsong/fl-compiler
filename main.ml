@@ -191,9 +191,13 @@ let print () =
         print_string "\n")
       ir_list
   | ASSEM(instr_list) ->
+    let get_register_name t = match Translate.F.get_register_name t with
+      | None -> Temp.temp_to_string t
+      | Some (reg) -> reg
+    in
     List.iter (fun instr_list ->
         List.iter (fun instr ->
-            let s = Codegen.format Translate.F.get_register_name instr in
+            let s = Codegen.format get_register_name instr in
             print_endline s) instr_list)
       instr_list
   | FLOW(graphs) ->
@@ -207,7 +211,10 @@ let print () =
   | REGISTER_ALLOC (allocs) ->
     let str_list = List.map (fun (instrs,alloc) ->
         let alloc_str = Color.allocation_to_string alloc in
-        let get_register_name tmp = Temp.TempMap.find tmp alloc in
+        let get_register_name tmp =
+          try Temp.TempMap.find tmp alloc
+          with _ -> failwith (sprintf "temp %s is not assigned a register." (Temp.temp_to_string tmp))
+        in
         let instrs_str = List.map (fun instr ->
             let instr_str = Codegen.format get_register_name instr in
             instr_str

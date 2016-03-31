@@ -143,6 +143,10 @@ let new_inode (defs : TempSet.t) (live_out : TempSet.t) (pool : Node.t TempMap.t
         let node = TempMap.find temp pool in
         temps_to_inodes rest (node :: inodes) pool
       else
+        (* if this node is precolored (the color was decided in
+           munch_expr), we still use Ingraph as the status to avoid
+           dependencies on Frame. We can always set the correct
+           status later.*)
         let node = { Node.temp = temp;
                      Node.adj = NodeSet.empty;
                      Node.status = ref (Ingraph 0) } in

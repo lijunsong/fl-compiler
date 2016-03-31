@@ -40,18 +40,18 @@ module SparcFrame : Frame = struct
                 |> List.enum
                 |> RegNameMap.of_enum
 
-  let reg_allocation = RegNameMap.enum reg_name_map
+  let known_temp = RegNameMap.enum reg_name_map
               |> Enum.map (fun (a,b)->b,a)
               |> RegMap.of_enum
 
-  let get_register (name : register) =
+  let get_temp (name : register) =
     RegNameMap.find name reg_name_map
 
   let get_register_name (reg : Temp.temp) =
     try
-      RegMap.find reg reg_allocation
+      Some (RegMap.find reg known_temp)
     with
-    | _ -> Temp.temp_to_string reg
+    | _ -> None
 
 
   let count_locals = ref 0
@@ -75,9 +75,9 @@ module SparcFrame : Frame = struct
     incr count_locals;
     loc
 
-  let fp = get_register "fp"
+  let fp = get_temp "fp"
 
-  let rv = get_register "o0"
+  let rv = get_temp "o0"
 
   let word_size = 4
 
@@ -95,7 +95,7 @@ module SparcFrame : Frame = struct
   let proc_entry_exit2 f instrs =
     (* TODO: list callee-saved registers *)
     let live_reg =
-      List.map get_register
+      List.map get_temp
                ["g0"; "o0"; "o1"; "o2"; "o3"; "o4"; "o5"]
     in
     instrs @ [

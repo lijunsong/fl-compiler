@@ -13,12 +13,13 @@ let allocation_to_string a =
          Printf.sprintf "%s: %s" (Temp.temp_to_string temp) reg))
      |> List.of_enum)
 
-(** Take out all non-precolored node off the graph. *)
+(** Take out all non-precolored node off the graph. This function has
+    side effect that modifies status of igraph nodes to Removed. *)
 let get_color_stack (igraph : igraph) (init : allocation)
     (max_regs : int): Node.t list =
 
   (** check whether all non-precolored nodes are removed *)
-  let all_precolored () =
+  let all_removed () =
     List.for_all (fun node -> match !(node.Node.status) with
         | Ingraph (_) ->
           Temp.TempMap.mem node.Node.temp init
@@ -31,7 +32,7 @@ let get_color_stack (igraph : igraph) (init : allocation)
   in
   let rec get_iter worklist stack : Node.t list =
     match worklist with
-    | _ when all_precolored () -> stack
+    | _ when all_removed () -> stack
     | [] ->
       (* worklist is empty, generate new ones *)
       let new_worklist = get_worklist () in
@@ -82,12 +83,15 @@ let color (igraph : Liveness.igraph)
     in
     get_iter registers
   in
+  (** Given a stack, assign elements in the stack registers. This
+      function will modify nodes' status to Colored(reg) *)
   let rec assign_register (stack : Node.t list) alloc : allocation =
     match stack with
     | [] -> alloc
     | hd :: rest ->
       let reg = get_unused_reg hd alloc in
       let alloc' = Temp.TempMap.add hd.Node.temp reg alloc in
+      hd.Node.status := Colored(reg);
       assign_register rest alloc'
   in
   let alloc =   assign_register stack init in

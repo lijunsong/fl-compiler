@@ -62,14 +62,14 @@ let op_to_instr = function
 (** registers to which a call replaces its results *)
 let call_write_regs = []
 (** zero register on sparc *)
-let g0 = F.get_register "g0"
-let sp = F.get_register "sp"
+let g0 = F.get_temp "g0"
+let sp = F.get_temp "sp"
 
 (** sparc has 6 input registers, get these registers by their indecies *)
 let ireg_of_index i : Temp.temp =
   assert (i >= 0 && i <= 5);
   let reg = sprintf "i%d" i in
-  F.get_register reg
+  F.get_temp reg
 
 let rec munch_exp (exp : Ir.exp) : temp =
   match exp with

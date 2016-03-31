@@ -14,15 +14,15 @@ module type Frame = sig
   (** all register names for the target machines *)
   val registers: register list
 
-  (** given a name, return the register *)
-  val get_register : register -> Temp.temp
+  (** temporaries that already maps to machine registers *)
+  val known_temp: register Temp.TempMap.t
 
-  (** known temporaries *)
-  val reg_allocation : register Temp.TempMap.t
+  (** given a name, return the register *)
+  val get_temp : register -> Temp.temp
 
   (** given a register, return its pre-defined name. If it has no
-      predefined name, a name starts with 'r' will be used. *)
-  val get_register_name : Temp.temp -> register
+      predefined name, return None. *)
+  val get_register_name : Temp.temp -> register option
 
   (** [new_frame name formals] create a frame named l. A list of
       bool indicates whether each formal argument escapes. *)
