@@ -60,7 +60,7 @@ module SparcFrame : Frame = struct
     count_locals := 0;
     { name;
       formals = List.mapi (fun i f ->
-                    if f then InMem((-4) * (i+1)) (* FIXME *)
+                    if f then InMem((-word_size) * (i+1)) (* FIXME *)
                     else let t = Temp.new_temp() in
                          InReg(t)) formals;
       locals = [];
@@ -70,7 +70,7 @@ module SparcFrame : Frame = struct
   let get_formals (fm : frame) = fm.formals
 
   let alloc_local fm escape =
-    let loc = InMem(4 * !count_locals) in
+    let loc = InMem(word_size * !count_locals) in
     fm.locals <- loc :: fm.locals;
     incr count_locals;
     loc
