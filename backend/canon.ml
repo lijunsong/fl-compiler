@@ -108,7 +108,7 @@ let basic_blocks linearized =
    *
    * NOTE: reversing the order to increasing the performance.
   *)
-  let done_label = Temp.new_label ~prefix:"exit" () in
+  let done_label = Temp.new_label ~prefix:".exit" () in
   let is_jump = function
     | Ir.JUMP(_) | Ir.CJUMP(_) -> true
     | _ -> false in

@@ -1,0 +1,7 @@
+let function g(a:int):int = 
+      let var b := 2 in
+        a + b
+      end
+in
+	g(1)
+end

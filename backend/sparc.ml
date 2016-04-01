@@ -2,6 +2,7 @@ open Frame
 open Sexplib.Std
 open Sexplib
 open Batteries
+open Printf
 
 module SparcFrame : Frame = struct
   type register = string with sexp
@@ -22,12 +23,14 @@ module SparcFrame : Frame = struct
     | STRING of Temp.label * string
   with sexp
 
+  let word_size = 8
+
   let registers = [
-    "l0"; "l1"; "l2"; "l3"; "l4"; "l5"; "l6";
-    "o0"; "o1"; "o2"; "o3"; "o4"; "o5"; "o6";
-    "i0"; "i1"; "i2"; "i3"; "i4"; "i5"; "i6";
-    "g0";
-    "sp"; "fp"
+    "%l0"; "%l1"; "%l2"; "%l3"; "%l4"; "%l5";
+    "%o0"; "%o1"; "%o2"; "%o3"; "%o4"; "%o5";
+    "%i0"; "%i1"; "%i2"; "%i3"; "%i4"; "%i5";
+    "%g0"; "%g1"; "%g2"; "%g3"; "%g4"; "%g5";
+    "%sp"; "%fp";
   ]
 
   (* maps from name to temp *)
@@ -45,7 +48,9 @@ module SparcFrame : Frame = struct
               |> RegMap.of_enum
 
   let get_temp (name : register) =
-    RegNameMap.find name reg_name_map
+    try
+      RegNameMap.find name reg_name_map
+    with _ -> failwith (name ^ " Not found")
 
   let get_register_name (reg : Temp.temp) =
     try
@@ -75,11 +80,12 @@ module SparcFrame : Frame = struct
     incr count_locals;
     loc
 
-  let fp = get_temp "fp"
+  let fp = get_temp "%fp"
 
-  let rv = get_temp "o0"
+  let rv = get_temp "%o0"
 
-  let word_size = 4
+  let bias = 2047
+  (** The BIAS in Sparc frame. *)
 
   (** Given an expression for the base of an frame and given the
   access of that frame, return an expression for contents of the
@@ -89,23 +95,44 @@ module SparcFrame : Frame = struct
     | InMem(offset) ->
        Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
 
-  (** FIXME *)
+  (** Given #formal and #locals, this function calculates stack
+      size. *)
+  let get_stack_size formals locals =
+    let formal_n = List.length formals in
+    let minimal_size = 176 in
+    let locals_n = List.length locals in
+    let locals_add_over6formals = if formal_n > 6 then
+        locals_n + formal_n - 6
+      else
+        locals_n in
+    minimal_size + (locals_add_over6formals + 1) / 2 * 2 * 8
+
+  (** implement view shift *)
   let proc_entry_exit1 f stmt = stmt
 
   let proc_entry_exit2 f instrs =
     (* TODO: list callee-saved registers *)
     let live_reg =
       List.map get_temp
-               ["g0"; "o0"; "o1"; "o2"; "o3"; "o4"; "o5"]
+               ["%i0"; "%i1"; "%i2"; "%i3"; "%i4"; "%i5"]
     in
     instrs @ [
         Assem.OP("", [], live_reg, None)
       ]
 
   let proc_entry_exit3 f body =
-    let prol = "procedure: " ^ (Temp.label_to_string f.name) in
-    let epil = "end " ^ (Temp.label_to_string f.name) in
-    (prol :: body) @ [epil]
+    let stack_size = get_stack_size f.formals f.locals in
+    let f_name = get_name f |> Temp.label_to_string in
+    let prolog = [
+      ".global " ^ f_name;  (* TODO: not all functions are global*)
+      f_name ^ ":";         (* function start *)
+      sprintf "save %%sp, %d, %%sp" (-stack_size); (* register window shift*)
+    ] in
+    let epil = [
+      "restore %g0,%g0,%g0"; (* TODO: need to return value. *)
+      "return %i7 + 8";
+    ] in
+    (prolog @ body) @ epil
 
   let external_call f args =
     Ir.CALL(Ir.NAME(Temp.named_label f), args)

@@ -76,7 +76,7 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
-                  frame = F.new_frame (Temp.new_label ~prefix:"main" ()) [];
+                  frame = F.new_frame (Temp.named_label "main") [];
                   cmp = !uniq
                 }
 
