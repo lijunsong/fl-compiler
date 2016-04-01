@@ -58,14 +58,23 @@ module SparcFrame : Frame = struct
     with
     | _ -> None
 
+  let fp = get_temp "%fp"
 
-  let count_locals = ref 0
+  let rv = get_temp "%o0"
 
+  (** The BIAS in Sparc frame. *)
+  let bias = 2047
+
+  (** count_locals initializes to 1, so that the first local variable
+      has offset -word_size from fp *)
+  let count_locals = ref 1
+
+  (** formals on Sparc reside at fp + 128, growing upward. *)
   let new_frame (name : Temp.label) (formals : bool list) : frame =
-    count_locals := 0;
+    count_locals := 1;
     { name;
       formals = List.mapi (fun i f ->
-                    if f then InMem((-word_size) * (i+1)) (* FIXME *)
+                    if f then InMem(word_size * (i+16) + bias) (* FIXME *)
                     else let t = Temp.new_temp() in
                          InReg(t)) formals;
       locals = [];
@@ -75,17 +84,10 @@ module SparcFrame : Frame = struct
   let get_formals (fm : frame) = fm.formals
 
   let alloc_local fm escape =
-    let loc = InMem(word_size * !count_locals) in
+    let loc = InMem((-word_size) * !count_locals + bias) in
     fm.locals <- loc :: fm.locals;
     incr count_locals;
     loc
-
-  let fp = get_temp "%fp"
-
-  let rv = get_temp "%o0"
-
-  let bias = 2047
-  (** The BIAS in Sparc frame. *)
 
   (** Given an expression for the base of an frame and given the
   access of that frame, return an expression for contents of the
