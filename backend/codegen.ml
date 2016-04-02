@@ -1,6 +1,8 @@
 open Batteries
 open Assem
 
+(** TODO: rework this module. This one should be coupled with sparc
+    backend.*)
 module F = Translate.F
 
 let instr_list : instr list ref = ref []
@@ -11,6 +13,10 @@ let nop = OP("nop", [], [], None)
 
 let emit instr : unit =
   instr_list := instr :: !instr_list
+
+(** Local Labels on Sparc starts with "." *)
+let assembly_label_string l : string =
+  "." ^ (Temp.label_to_string l)
 
 (** TODO *)
 let format temp_to_string instr =
@@ -40,7 +46,7 @@ let format temp_to_string instr =
                              "src: " ^ (List.map temp_to_string src
                                         |> String.concat ",") ^ "\n")
      end
-  | LABEL (asm, l) -> asm ^ ":"
+  | LABEL (asm, l) -> (assembly_label_string l) ^ ":"
   | MOVE (asm, dst, src) ->
      begin try asm_str (String.to_list asm) [dst] [src] ""
            with _ ->
@@ -77,7 +83,11 @@ let rec munch_exp (exp : Ir.exp) : temp =
      result(fun t ->
          OP("mov " ^ (string_of_int i) ^ ", 'd0", [t], [], None)
          |> emit)
-  | Ir.NAME(l) -> failwith "unreachable"
+  | Ir.NAME(l) ->
+    result(fun t ->
+        let l_str = assembly_label_string l in
+        emit(OP(sprintf "sethi %%hi(%s), 'd0" l_str, [t], [], None));
+        emit(OP(sprintf "or 's0, %%lo(%s), 'd0" l_str, [t], [t], None)))
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
   | Ir.BINOP(op, e0, e1) ->
@@ -99,7 +109,10 @@ let rec munch_exp (exp : Ir.exp) : temp =
      emit(nop);
      result(fun t ->
          emit(MOVE("mov 's0, 'd0", t, F.rv)))
-
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))) ->
+    let lhs = munch_exp ir_lhs in
+    result(fun t ->
+      OP (sprintf "ld ['s0+%d], 'd0" n, [t], [lhs], None) |> emit)
   | Ir.MEM (e) ->
      let rand = munch_exp e in
      result(fun t ->
@@ -141,6 +154,10 @@ and munch_stmt (stmt : Ir.stmt) : unit =
   | Ir.SEQ (s0, s1) ->
      munch_stmt s0;
      munch_stmt s1
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs) ->
+    let lhs = munch_exp ir_lhs in
+    let v = munch_exp ir_rhs in
+    OP(sprintf "st 's0, ['s1+%d]" n, [], [v; lhs], None) |> emit
   | Ir.MOVE (Ir.MEM(e), e1) ->
      let src = munch_exp e in
      let moveto = munch_exp e1 in
@@ -157,15 +174,17 @@ and munch_stmt (stmt : Ir.stmt) : unit =
      |> emit
   | Ir.JUMP (Ir.NAME(l), ls) ->
      (* Use synthetic*)
-     OP("ba " ^ (Temp.label_to_string l), [], [], Some ls)
-     |> emit
+     OP("ba " ^ (assembly_label_string l), [], [], Some ls)
+     |> emit;
+     emit(nop);
   | Ir.CJUMP (relop, e0, e1, t, f) -> (* TODO: this is not maximal munch *)
      let t0 = munch_exp e0 in
      let t1 = munch_exp e1 in
      OP("be 's0, 's1",
         [(*TODO: what is the out register?*)],
         [t0; t1], Some([t; f]))
-     |> emit
+     |> emit;
+     emit(nop);
   | Ir.LABEL(l) ->
      emit(LABEL(Temp.label_to_string l, l))
   | _ -> failwith ("NYI munch_stmt: " ^ (Ir.stmt_to_string stmt))

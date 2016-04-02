@@ -21,7 +21,7 @@ let label_with_prefix prefix =
 let label_to_string label =
   Symbol.to_string label
 
-let new_label ?(prefix=".L") () =
+let new_label ?(prefix="L") () =
   incr label_count;
   label_with_prefix prefix
 
