@@ -65,5 +65,9 @@ module type Frame = sig
 
   (** dump frame information for debugging *)
   val debug_dump : frame -> unit
+
+  (** [string label str] generates data section for [str] which will
+      be [label]ed *)
+  val string : Temp.label -> string -> string
 end
 

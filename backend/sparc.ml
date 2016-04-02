@@ -144,4 +144,18 @@ module SparcFrame : Frame = struct
     Sexp.output_hum Pervasives.stdout (sexp_of_frame fm);
     print_string "\n"
 
+  (** Local Labels on Sparc starts with ".". This function is
+      duplicated in codegen *)
+  let assembly_label_string l : string =
+    "." ^ (Temp.label_to_string l)
+
+  let string l s =
+    let l_str = assembly_label_string l in
+    let str = [
+      l_str ^ ":";
+      sprintf ".asciz %s" s;
+      sprintf ".type %s,#object" l_str;
+      sprintf ".size %s,%d" l_str ((String.length s) + 1);
+    ] in
+    String.concat "\n" str
 end

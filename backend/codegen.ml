@@ -198,3 +198,19 @@ let codegen frame ir =
   instr_list := [];
   munch_stmt ir;
   List.rev !instr_list
+
+let codegen_data frags =
+  let rec gen_iter frags str_list =
+    match frags with
+    | [] -> str_list
+    | (l, s) :: rest ->
+      F.string l s :: gen_iter rest str_list
+  in
+  (* generate data section content *)
+  let data = gen_iter frags [] |> String.concat "\n" in
+  (* OK. Now we need section header *)
+  let header = [
+    ".section \".data1\"";
+    ".align 4"
+  ] |> String.concat "\n" in
+  header ^ "\n" ^ data

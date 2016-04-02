@@ -124,8 +124,19 @@ let print_lang lang =
             assem in
         assem'
       ) allocs in
+    let text_header = [".section \".text\"";
+                       ".align 16"] |> String.concat "\n" in
     let str = String.concat "\n" str_list in
-    print_endline str
+    (* emit text header and the code text *)
+    let () = print_endline text_header in
+    let () = print_endline str in
+    (* emit the string *)
+    let frags = List.map (fun frag -> match frag with
+        | Translate.F.PROC(_) -> failwith "proc found in string frags."
+        | Translate.F.STRING(l, s) -> (l, s)) str_frags in
+    let data = Codegen.codegen_data frags in
+    print_endline data
+
 
 let load s =
   let contents = Util.file_to_string s in
