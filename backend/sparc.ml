@@ -132,8 +132,8 @@ module SparcFrame : Frame = struct
     ] in
     (* NOTE: remember epilog takes a delay-slot. *)
     let epil = [
-      "return %i7 + 8";
-      "restore %g0,%g0,%g0"; (* TODO: need to return value. *)
+      "jmp %i7 + 8";
+      "restore %g0,%g0,%g0";
     ] in
     (prolog @ body) @ epil
 
