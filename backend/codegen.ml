@@ -70,6 +70,9 @@ let call_write_regs = []
 (** zero register on sparc *)
 let g0 = F.get_temp "%g0"
 let sp = F.get_temp "%sp"
+(* Because of view shifting, F.rv cann't be used to fetch the return
+   value from call. *)
+let o0 = F.get_temp "%o0"
 
 (** sparc has 6 input registers, get these registers by their indecies *)
 let ireg_of_index i : Temp.temp =
@@ -102,13 +105,13 @@ let rec munch_exp (exp : Ir.exp) : temp =
      emit(OP("call " ^ (Temp.label_to_string l), call_write_regs, src, None));
      emit(nop);
      result(fun t ->
-         emit(MOVE("mov 's0, 'd0", t, F.rv)))
+         emit(MOVE("mov 's0, 'd0", t, o0)))
   | Ir.CALL (f, args) -> (* This one seems not right. *)
      let src = munch_exp f :: munch_args args in
      emit(OP("call 's0" , call_write_regs, src, None));
      emit(nop);
      result(fun t ->
-         emit(MOVE("mov 's0, 'd0", t, F.rv)))
+         emit(MOVE("mov 's0, 'd0", t, o0)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))) ->
     let lhs = munch_exp ir_lhs in
     result(fun t ->

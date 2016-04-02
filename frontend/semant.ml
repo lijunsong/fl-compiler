@@ -423,8 +423,9 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
           (* The body will be discarded. BUGS: if another function is
              declared in the scope of 'for', that function will be
              stored but we re-translate it again. discard the body is
-             not a good solution *)
-          let _, body_t = trans_exp curr_level None tenv venv' body in
+             not a good solution. As the body is discarded, it does
+             not matter what we passed as break_to (but we must pass one.) *)
+          let _, body_t = trans_exp curr_level break_to tenv venv' body in
           (** discard the translated body *)
           if body_t <> Types.UNIT then
             expect_type (S.get_exp_pos body) "unit" body_t

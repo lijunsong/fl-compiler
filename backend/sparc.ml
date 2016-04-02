@@ -60,7 +60,7 @@ module SparcFrame : Frame = struct
 
   let fp = get_temp "%fp"
 
-  let rv = get_temp "%o0"
+  let rv = get_temp "%i0"
 
   (** The BIAS in Sparc frame. *)
   let bias = 2047
@@ -158,4 +158,5 @@ module SparcFrame : Frame = struct
       sprintf ".size %s,%d" l_str ((String.length s) + 1);
     ] in
     String.concat "\n" str
+
 end

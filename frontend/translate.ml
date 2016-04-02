@@ -298,7 +298,10 @@ let let_body exp_lst exp : exp =
 
 let proc_entry_exit level fbody : unit =
   let fm = level.frame in
+  (* Front-end here must know which machine register is used for
+     returning value. *)
   let body = Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
+  (* do view shift *)
   let stmt = F.proc_entry_exit1 fm body in
   frag_list := F.PROC(stmt, fm) :: !frag_list
 

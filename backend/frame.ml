@@ -40,6 +40,9 @@ module type Frame = sig
 
   val fp : Temp.temp
 
+  (** [rv] is the register used to return value from callee
+      function. Don't use it to fetch the return value from caller,
+      for the view-shift on different platforms. *)
   val rv : Temp.temp
 
   (** the size of a word in a Frame *)
