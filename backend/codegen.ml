@@ -157,12 +157,12 @@ and munch_stmt (stmt : Ir.stmt) : unit =
      |> emit
   | Ir.JUMP (Ir.NAME(l), ls) ->
      (* Use synthetic*)
-     OP("jmp " ^ (Temp.label_to_string l), [], [], Some ls)
+     OP("ba " ^ (Temp.label_to_string l), [], [], Some ls)
      |> emit
   | Ir.CJUMP (relop, e0, e1, t, f) -> (* TODO: this is not maximal munch *)
      let t0 = munch_exp e0 in
      let t1 = munch_exp e1 in
-     OP("cmp 's0, 's1",
+     OP("be 's0, 's1",
         [(*TODO: what is the out register?*)],
         [t0; t1], Some([t; f]))
      |> emit

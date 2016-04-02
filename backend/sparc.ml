@@ -130,9 +130,10 @@ module SparcFrame : Frame = struct
       f_name ^ ":";         (* function start *)
       sprintf "save %%sp, %d, %%sp" (-stack_size); (* register window shift*)
     ] in
+    (* NOTE: remember epilog takes a delay-slot. *)
     let epil = [
-      "restore %g0,%g0,%g0"; (* TODO: need to return value. *)
       "return %i7 + 8";
+      "restore %g0,%g0,%g0"; (* TODO: need to return value. *)
     ] in
     (prolog @ body) @ epil
 
