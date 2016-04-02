@@ -109,8 +109,36 @@ module SparcFrame : Frame = struct
         locals_n in
     minimal_size + (locals_add_over6formals + 1) / 2 * 2 * 8
 
-  (** implement view shift *)
-  let proc_entry_exit1 f stmt = stmt
+  (** sparc has 6 input registers, get one of these registers by its
+      index. This one is a replicate function of that in codegen. *)
+  let ireg_of_index i : Temp.temp =
+    assert (i >= 0 && i <= 5);
+    let reg = sprintf "%%i%d" i in
+    get_temp reg
+
+  (** implement view shift. We only have pointers in tiger, so for all
+      escaped args, move from i-x register to its stack slot. For all
+      un-escaped args, move from the i-x register to a temporary.
+      view shift doesn't do anything to static link. *)
+  let proc_entry_exit1 fm stmt =
+    let gen_move idx formal =
+      let ireg = ireg_of_index idx in
+      match formal with
+      | InReg(t) ->
+        let t = Temp.new_temp() in
+        Ir.MOVE(Ir.TEMP(t), Ir.TEMP(ireg))
+      | InMem(offset) as acc ->
+        Ir.MOVE(get_exp (Ir.TEMP(fp)) acc, Ir.TEMP(ireg))
+    in
+    let all_args = get_formals fm in
+    if List.length all_args <= 1 then
+      (* only the static link, or top-level. *)
+      stmt
+    else
+    let args_no_staticlink = List.tl all_args in
+    let view_shift = List.mapi gen_move args_no_staticlink
+                     |> Ir.seq in
+    Ir.SEQ(view_shift, stmt)
 
   let proc_entry_exit2 f instrs =
     (* TODO: list callee-saved registers *)

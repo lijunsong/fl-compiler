@@ -45,7 +45,11 @@ module type Frame = sig
       for the view-shift on different platforms. *)
   val rv : Temp.temp
 
-  (** the size of a word in a Frame *)
+  (** the bias info on Sparc. TODO: this info should not be exported
+      from here if we are going to do multiple backends *)
+  val bias : int
+
+    (** the size of a word in a Frame *)
   val word_size : int
 
   (** [get_exp base access] given the base location of the access,

@@ -83,10 +83,11 @@ let sp = F.get_temp "%sp"
    value from call. *)
 let o0 = F.get_temp "%o0"
 
-(** sparc has 6 input registers, get these registers by their indecies *)
-let ireg_of_index i : Temp.temp =
+(** sparc has 6 input registers for callee, get these registers by
+    their indecies *)
+let oreg_of_index i : Temp.temp =
   assert (i >= 0 && i <= 5);
-  let reg = sprintf "%%i%d" i in
+  let reg = sprintf "%%o%d" i in
   F.get_temp reg
 
 let rec munch_exp (exp : Ir.exp) : temp =
@@ -132,15 +133,15 @@ let rec munch_exp (exp : Ir.exp) : temp =
         |> emit)
 
 and munch_args args =
-  (** store all arguments on stack (starts on %sp+96) *)
+  (** This function stores passing arguments on stack. stack slot
+      calculates as that in sparc.ml. The calculation must be
+      consistent. *)
   let store_args args =
-    let rec store_iter args count = match args with
+    let rec store_iter args idx = match args with
       | [] -> ()
       | arg :: rest ->
         let arg_temp = munch_exp arg in
-        let offset = 96 + count * F.word_size in
-        (** TODO: this is actually not right. The offset should
-            stored in a way that callee is aware of these arguments.*)
+        let offset = F.bias + (idx+22) * F.word_size in
         emit(OP(sprintf "st 's0, ['s1+%d]" offset,
                 [],
                 [arg_temp; sp],
@@ -156,7 +157,7 @@ and munch_args args =
       | [ ] -> temps
       | arg :: rest ->
         let arg_temp = munch_exp arg in
-        emit(MOVE("mov 's0, 'd0", ireg_of_index cur_idx, arg_temp));
+        emit(MOVE("mov 's0, 'd0", oreg_of_index cur_idx, arg_temp));
         munch_iter rest (cur_idx+1) (arg_temp :: temps)
   in
   munch_iter args 0 []
