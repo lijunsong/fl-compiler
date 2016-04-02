@@ -65,6 +65,14 @@ let trans_binop (op : S.op) : Ir.binop = match op with
   | S.OpDiv -> Ir.DIV
   | _ -> failwith "Unknown Binary Operator"
 
+let compatible_type t1 t2 =
+  if t1 = t2 then true
+  else match t1, t2 with
+    | Types.RECORD (_), Types.NIL -> true
+    | Types.NIL, Types.RECORD (_) -> true
+    | Types.NIL, Types.NIL -> true
+    | _ -> false
+
 let trans_relop (op : S.op) : Ir.relop = match op with
   | S.OpEq -> Ir.EQ
   | S.OpNeq -> Ir.NE
@@ -163,7 +171,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       let venv' = List.fold_right2 (fun name (acc, t) table -> (* binds args *)
           SymbolTable.enter name (Types.VarType(acc, t)) table) args_sym args_access venv in
       let body_ir, body_t = trans_exp level None tenv venv' fbody in
-      if ret_t <> body_t then
+      if not (compatible_type ret_t body_t) then
         expect_type pos (Types.t_to_string ret_t) body_t
       else begin
         Translate.proc_entry_exit level body_ir;
@@ -196,10 +204,10 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
             | Some (decl_t) ->
               begin match get_type pos decl_t tenv with
                 | Types.RECORD (_) as rec_type ->
-                  if init_t <> rec_type && init_t <> Types.NIL then
+                  if not (compatible_type init_t rec_type) then
                     expect_type pos (Symbol.to_string decl_t) init_t
                   else init_t
-                | t -> if init_t <> t then
+                | t -> if not (compatible_type init_t t) then
                     expect_type pos (Symbol.to_string decl_t) init_t
                   else init_t
               end
@@ -312,8 +320,8 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                                   (Types.t_to_string right_ty)))
         | S.OpEq | S.OpNeq ->
           let relop = trans_relop op in
-          if left_ty = right_ty then
-            Translate.relop relop l_ir r_ir, left_ty
+          if compatible_type left_ty right_ty then
+            Translate.relop relop l_ir r_ir, Types.INT
           else
             raise (TypeError(pos, "Operator applied to different types: " ^
                                   (Types.t_to_string left_ty) ^ " and " ^
@@ -322,7 +330,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
     | S.Assign (pos, var, e) ->
       let lhs_ir, left_ty = trvar var in
       let rhs_ir, right_ty = trexp e in
-      if left_ty <> right_ty then
+      if not (compatible_type left_ty right_ty) then
         expect_type pos (Types.t_to_string left_ty) right_ty
       else
         (* Ah! the overloaded MEM actually simplies the translation
@@ -340,8 +348,13 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                                                   (List.length arg_t) (List.length args)))
             | hd :: tl, hd' :: tl' ->
               let actual_ir, actual_t = trexp hd' in
-              if actual_t <> hd then
-                expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t
+              (* convert name to actual type. *)
+              let actual_t' = match actual_t with
+                | Types.NAME (name, _) -> get_type pos name tenv
+                | t -> t
+              in
+              if not (compatible_type actual_t' hd) then
+                expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t'
               else
                 actual_ir :: check_arg tl tl'
           in
@@ -366,7 +379,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                   if s0 <> s1 then
                     raise_undef pos s0
                   else let e_ir, e_t = trexp e0 in (* check type *)
-                    if expect_t = e_t || e_t = Types.NIL then
+                    if compatible_type expect_t e_t then
                       e_ir
                     else
                       expect_type pos (Types.t_to_string expect_t) e_t
@@ -396,7 +409,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
       else
         let thn_ir, thn_t = trexp thn in
         let els_ir, els_t = trexp els in
-        if thn_t <> els_t then
+        if not (compatible_type thn_t els_t) then
           expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
         else if thn_t = Types.UNIT then
           Translate.if_cond_unit_body tst_ir thn_ir (Some els_ir), Types.UNIT
@@ -425,7 +438,8 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
              stored but we re-translate it again. discard the body is
              not a good solution. As the body is discarded, it does
              not matter what we passed as break_to (but we must pass one.) *)
-          let _, body_t = trans_exp curr_level break_to tenv venv' body in
+          let tmp_label = Temp.new_label ~prefix:"discarded" () in
+          let _, body_t = trans_exp curr_level (Some tmp_label) tenv venv' body in
           (** discard the translated body *)
           if body_t <> Types.UNIT then
             expect_type (S.get_exp_pos body) "unit" body_t
@@ -453,7 +467,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
             expect_type (S.get_exp_pos size) "int" size_t
           else
             let init_ir, init_t = trexp init in
-            if init_t <> t then
+            if not (compatible_type init_t t) then
               expect_type (S.get_exp_pos init) (Types.t_to_string t) init_t
             else
               Translate.array size_ir init_ir, Types.ARRAY(t, uniq)

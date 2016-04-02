@@ -1,0 +1,8 @@
+let  type list = {first: int, rest: list}
+ function readlist() : list =
+    if 1
+         then list{first=1,rest=readlist()}
+         else nil
+in
+1
+end

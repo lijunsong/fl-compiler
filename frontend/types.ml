@@ -70,7 +70,15 @@ let typeEnv : typeEnv =
 
 (** valEnv predefines built-in functions. *)
 let valEnv : valEnv =
-  ["print", FuncType(Translate.outermost, [STRING], UNIT)
+  ["print", FuncType(Translate.outermost, [STRING], UNIT);
+   "getchar", FuncType(Translate.outermost, [], STRING);
+   "ord", FuncType(Translate.outermost, [STRING], INT);
+   "chr", FuncType(Translate.outermost, [INT], STRING);
+   "size", FuncType(Translate.outermost, [STRING], INT);
+   "substring", FuncType(Translate.outermost, [STRING; INT; INT], STRING);
+   "concat", FuncType(Translate.outermost, [STRING; STRING], STRING);
+   "not", FuncType(Translate.outermost, [INT], INT);
+   "exit", FuncType(Translate.outermost, [INT], UNIT);
   ]
   |> List.map (fun (n,t) -> Symbol.of_string n, t)
   |> List.enum
