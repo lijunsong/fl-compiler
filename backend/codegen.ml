@@ -99,8 +99,10 @@ let rec munch_exp (exp : Ir.exp) : temp =
   | Ir.NAME(l) ->
     result(fun t ->
         let l_str = assembly_label_string l in
-        emit(OP(sprintf "sethi %%hi(%s), 'd0" l_str, [t], [], None));
-        emit(OP(sprintf "or 's0, %%lo(%s), 'd0" l_str, [t], [t], None)))
+        emit(OP(sprintf "sethi %%h44(%s), 'd0" l_str, [t], [], None));
+        emit(OP(sprintf "or 's0, %%m44(%s), 'd0" l_str, [t], [t], None));
+        emit(OP("sllx 's0, 12, 'd0", [t], [t], None));
+        emit(OP(sprintf "or 's0, %%l44(%s), 'd0" l_str, [t], [t], None)))
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
   | Ir.BINOP(op, e0, e1) ->
@@ -117,6 +119,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
     result(fun t ->
         emit(MOVE("mov 's0, 'd0", t, o0)))
   | Ir.CALL (f, args) -> (* This one seems not right. *)
+    assert (0 = 1);
     let src = munch_exp f :: munch_args args in
     emit(OP("call 's0" , call_write_regs, src, None));
     emit(nop);
@@ -125,11 +128,11 @@ let rec munch_exp (exp : Ir.exp) : temp =
   | Ir.MEM (Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))) ->
     let lhs = munch_exp ir_lhs in
     result(fun t ->
-        OP (sprintf "ld ['s0+%d], 'd0" n, [t], [lhs], None) |> emit)
+        OP (sprintf "ldx ['s0+%d], 'd0" n, [t], [lhs], None) |> emit)
   | Ir.MEM (e) ->
     let rand = munch_exp e in
     result(fun t ->
-        OP ("ld ['s0], 'd0", [t], [rand], None)
+        OP ("ldx ['s0], 'd0", [t], [rand], None)
         |> emit)
 
 and munch_args args =
@@ -142,7 +145,7 @@ and munch_args args =
       | arg :: rest ->
         let arg_temp = munch_exp arg in
         let offset = F.bias + (idx+22) * F.word_size in
-        emit(OP(sprintf "st 's0, ['s1+%d]" offset,
+        emit(OP(sprintf "stx 's0, ['s1+%d]" offset,
                 [],
                 [arg_temp; sp],
                 None))
@@ -170,12 +173,12 @@ and munch_stmt (stmt : Ir.stmt) : unit =
   | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs) ->
     let lhs = munch_exp ir_lhs in
     let v = munch_exp ir_rhs in
-    OP(sprintf "st 's0, ['s1+%d]" n, [], [v; lhs], None) |> emit
+    OP(sprintf "stx 's0, ['s1+%d]" n, [], [v; lhs], None) |> emit
   | Ir.MOVE (Ir.MEM(e), e1) ->
     let src = munch_exp e in
     let moveto = munch_exp e1 in
     (* dst is [], because it is the memory not the reg that holds the value *)
-    OP("st 's0, ['s1]", [], [moveto; src], None)
+    OP("stx 's0, ['s1]", [], [moveto; src], None)
     |> emit
   | Ir.MOVE (Ir.TEMP(t), e) ->
     let src = munch_exp e in

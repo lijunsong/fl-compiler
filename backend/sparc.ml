@@ -177,13 +177,16 @@ module SparcFrame : Frame = struct
   let assembly_label_string l : string =
     "." ^ (Temp.label_to_string l)
 
+  (** The implementation of string is interesting. If runtime.c
+      defines the length as a long long, we need a xword instead of a
+      word here. As currently runtime.c defines length as an int, we
+      just need a word to store its length.*)
   let string l s =
     let l_str = assembly_label_string l in
     let str = [
       l_str ^ ":";
-      sprintf ".asciz %s" s;
-      sprintf ".type %s,#object" l_str;
-      sprintf ".size %s,%d" l_str ((String.length s) + 1);
+      sprintf ".word %d" (String.length s);
+      sprintf ".ascii \"%s\"" s;
     ] in
     String.concat "\n" str
 
