@@ -7,11 +7,11 @@ let
               function f():int =
                 a - b - c
           in
-          f()
+          f() /* pass current fp */
           end
     in
-    bar()
+    bar() /* pass current fp */
     end
 in
-  foo()
+  foo()  /* pass current fp */
 end

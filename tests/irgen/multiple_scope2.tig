@@ -1,17 +1,13 @@
 let
   var a := 0
-  function foo(x: int): int =
-    let var b := 1
-        function bar(y: int):int =
-          let var c := 2
-              function f(z: int):int =
-                a + b + c + x + y + z
-          in
-          f(-300)
-          end
-    in
-    bar(-200)
-    end
-in
-  foo(-100)
-end
+  function f0(): int =
+    let var b := 100 in b end
+  function f1():int =
+     let function f2():int =
+           let function f3():int=
+                 let function f4():int=
+                    f0()   /* get fp at 1. */
+                 in f4() end  /* 4. pass fp */
+           in f3() end  /* 3. pass fp */
+     in f2() end  /* 2. pass fp */
+in f1() end  /* 1. pass fp */

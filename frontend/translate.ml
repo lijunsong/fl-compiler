@@ -181,37 +181,72 @@ let assign (lhs : exp) (rhs : exp) : exp =
   Nx(Ir.MOVE(l, r))
 
 (** call's helper function. Given a function's own level (def_level,
-    got from venv), and where it is used (the use_level, got when a
-    call needs translation), This function calculates an exp to
-    describe its static link. This one is slightly different from
-    simple_var:
+    got from venv), and where it is used (the use_level, got when
+    translation encounters a call), This function calculates an exp to
+    describe def_level's statically enclosing function's
+    fp. Conceptually, this one is the same as simple_var as they both
+    follow up the static link, but this one is more complicated as we
+    need to handle more cases.
 
-    1. def.parent = use => return fp
-    2. def = use => return static_link
+    (Indentation means new level. `T` means toplevel -- outermost
+    level that is. arg0 is the argument position for static link. )
 
-    Consider these two situations:
+    Case 1. use_level's parent = def_level's parent
+    T
+      foo (){}
+      bar (){ foo() }
 
-    def f1
-      def f2 (define: this is def_level)
-      def f3 (f2's sibling)
-         def f4 (use f2: this is use_level)
+    Inside bar, bar's arg0 is foo's statically enclosing
+    function's fp.
 
-    def f1
-      def f2
-         def f3
-         use f3
-         use f2
+    Case 2. use_level = def_level
+    T
+      foo () { foo() }
+
+    Inside foo, foo's arg0 is foo's statically enclosing
+    function's fp.
+
+    Case 3.
+    T
+      foo () {}
+      ...
+      foo();  // use foo in T
+
+    Inside T, T's current fp is foo's statically enclosing function's
+    fp.
+
+    Case 4.
+    T
+      f0 () {}
+      f1 () {
+         f2 () {
+           f3 () {
+              f4 () {
+                  f0();
+      ...
+
+    We need pass f0's statically enclosing function's fp (I name it
+    Tlevel_fp) to f0.
+
+    Tlevel_fp = f1's arg0
+              = f2's arg0 + offset of f1's arg0
+              = f3's arg0 + offset of f2's arg0 + offset of f1's arg0
+              = ...
+
+    To see this in a glance: f2's arg0 is f1's fp, f3's arg0 is f2's
+    fp. When f0 is called, what we have is f4's arg0, and what we want
+    is f1's arg0.
 *)
-let rec follow_static_link def_level use_level : exp =
+let rec get_enclosing_level_fp def_level use_level : exp =
   if def_level = use_level then
     let sl : F.access = get_static_link use_level in
     Ex(F.get_exp (Ir.TEMP(F.fp)) sl)
   else
     match def_level.parent, use_level.parent with
-    | Some (dp), _ when dp = use_level ->
+    | Some (def_parent), _ when def_parent = use_level ->
       Ex(Ir.TEMP(F.fp))
-    | Some (dp), Some (use_parent) ->
-      let prev = unEx(follow_static_link def_level use_parent) in
+    | Some (def_parent), Some (use_parent) ->
+      let prev = unEx(get_enclosing_level_fp def_level use_parent) in
       let sl : F.access = get_static_link use_level in
       Ex(F.get_exp prev sl)
     | _ -> failwith "static link not found"
@@ -221,7 +256,7 @@ let rec follow_static_link def_level use_level : exp =
     function's level. call will calculate the static link. *)
 let call def_level use_level args : exp =
   let label = F.get_name def_level.frame in
-  let sl_exp = follow_static_link def_level use_level in
+  let sl_exp = get_enclosing_level_fp def_level use_level in
   let args_ir = List.map (fun arg -> unEx arg) args in
   Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
 
