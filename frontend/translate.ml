@@ -81,6 +81,7 @@ let outermost = { parent = None;
                 }
 
 let new_level parent label formals : level =
+  (* add static link *)
   let fm = F.new_frame label (true :: formals) in
   incr uniq;
   { parent = Some parent; frame = fm; cmp = !uniq }
@@ -179,11 +180,50 @@ let assign (lhs : exp) (rhs : exp) : exp =
   let r = unEx rhs in
   Nx(Ir.MOVE(l, r))
 
-(** FIXME: add static link to args_ir *)
-let call def_level args : exp =
+(** call's helper function. Given a function's own level (def_level,
+    got from venv), and where it is used (the use_level, got when a
+    call needs translation), This function calculates an exp to
+    describe its static link. This one is slightly different from
+    simple_var:
+
+    1. def.parent = use => return fp
+    2. def = use => return static_link
+
+    Consider these two situations:
+
+    def f1
+      def f2 (define: this is def_level)
+      def f3 (f2's sibling)
+         def f4 (use f2: this is use_level)
+
+    def f1
+      def f2
+         def f3
+         use f3
+         use f2
+*)
+let rec follow_static_link def_level use_level : exp =
+  if def_level = use_level then
+    let sl : F.access = get_static_link use_level in
+    Ex(F.get_exp (Ir.TEMP(F.fp)) sl)
+  else
+    match def_level.parent, use_level.parent with
+    | Some (dp), _ when dp = use_level ->
+      Ex(Ir.TEMP(F.fp))
+    | Some (dp), Some (use_parent) ->
+      let prev = unEx(follow_static_link def_level use_parent) in
+      let sl : F.access = get_static_link use_level in
+      Ex(F.get_exp prev sl)
+    | _ -> failwith "static link not found"
+
+
+(** def_level is the callee's own level. use_level is calling
+    function's level. call will calculate the static link. *)
+let call def_level use_level args : exp =
   let label = F.get_name def_level.frame in
+  let sl_exp = follow_static_link def_level use_level in
   let args_ir = List.map (fun arg -> unEx arg) args in
-  Ex(Ir.CALL(Ir.NAME(label), args_ir))
+  Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
 
 (** FIXME:
     1. is empty fields allowed? NO

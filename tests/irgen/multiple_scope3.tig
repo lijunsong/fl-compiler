@@ -1,0 +1,14 @@
+let var c:= 10
+    function f1(): int =
+    let function f2():int =
+      let function f3():int =
+         let var a := 1
+             function plus1(x:int): int=a+x
+             function f5():int=
+                let function f6():int = a+c /*11*/
+                    function f7():int = plus1(f6()) /*12*/
+                in f7() end
+         in f5() end
+      in f3() end
+    in f2() end
+in f1() end /*12*/

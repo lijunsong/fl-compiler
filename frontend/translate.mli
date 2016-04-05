@@ -83,8 +83,8 @@ val relop : Ir.relop -> exp -> exp -> exp
 (** [assign lhs rhs] *)
 val assign : exp -> exp -> exp
 
-(** [call f args] *)
-val call : level -> exp list -> exp
+(** [call def_level use_level args] *)
+val call : level -> level -> exp list -> exp
 
 val record : exp list -> exp
 

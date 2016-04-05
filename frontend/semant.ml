@@ -160,6 +160,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       (** Functions must have been in the env. So, for each function,
           fetch its level information, add its formals to a new env and
           continue translate body *)
+      (* level here is the function's new level. *)
       let level, args_t, ret_t = match SymbolTable.look funName venv with
         | None -> raise (InternalError("Function is not preproecssed."))
         | Some(Types.VarType(_)) -> raise (InternalError((Symbol.to_string funName) ^ " is not a function."))
@@ -341,7 +342,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
         | None -> raise_undef pos f
         | Some (Types.VarType(_)) ->
           raise (TypeError(pos, (Symbol.to_string f) ^ " is not applicable"))
-        | Some (Types.FuncType (level, arg_t, ret_t)) ->
+        | Some (Types.FuncType (def_level, arg_t, ret_t)) ->
           let rec check_arg (expect : Types.t list) (actual : S.exp list) : Translate.exp list = match expect, actual with
             | [], [] -> []
             | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
@@ -359,7 +360,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                 actual_ir :: check_arg tl tl'
           in
           let argsv = check_arg arg_t args in
-          Translate.call level argsv, ret_t
+          Translate.call def_level curr_level argsv, ret_t
       end
     | S.Record (pos, record, fields) ->
       begin match SymbolTable.look record tenv with

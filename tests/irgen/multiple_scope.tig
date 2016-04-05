@@ -5,7 +5,7 @@ let
         function bar():int =
           let var c := 2
               function f():int =
-                a + b + c
+                a - b - c
           in
           f()
           end

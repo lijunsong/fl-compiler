@@ -32,7 +32,7 @@ type typ =
   (** Var access * Var Type *)
 
   | FuncType of Translate.level * t list * t
-  (** function's nested level * argumentTypes * returnType
+  (** function's  FunctionOwnLevel * argumentTypes * returnType
       NOTE: each level has already associated a label *)
 
 let t_to_string = function
