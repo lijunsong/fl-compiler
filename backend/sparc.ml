@@ -135,8 +135,7 @@ module SparcFrame : Frame = struct
       (* only the static link, or top-level. *)
       stmt
     else
-    let args_no_staticlink = List.tl all_args in
-    let view_shift = List.mapi gen_move args_no_staticlink
+    let view_shift = List.mapi gen_move all_args
                      |> Ir.seq in
     Ir.SEQ(view_shift, stmt)
 
