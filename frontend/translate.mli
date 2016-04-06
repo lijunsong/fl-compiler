@@ -35,7 +35,7 @@ val outermost : level
 
 (** [new_level parent name formals ] create a new level for a nested
     function. *)
-val new_level : level -> Temp.label -> bool list -> level
+val new_level : ?add_static_link:bool -> level -> Temp.label -> bool list -> level
 
 val get_formals : level -> access list
 

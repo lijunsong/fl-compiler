@@ -70,16 +70,21 @@ let typeEnv : typeEnv =
 
 (** valEnv predefines built-in functions. *)
 let valEnv : valEnv =
-  ["print", FuncType(Translate.outermost, [STRING], UNIT);
-   "getchar", FuncType(Translate.outermost, [], STRING);
-   "ord", FuncType(Translate.outermost, [STRING], INT);
-   "chr", FuncType(Translate.outermost, [INT], STRING);
-   "size", FuncType(Translate.outermost, [STRING], INT);
-   "substring", FuncType(Translate.outermost, [STRING; INT; INT], STRING);
-   "concat", FuncType(Translate.outermost, [STRING; STRING], STRING);
-   "not", FuncType(Translate.outermost, [INT], INT);
-   "exit", FuncType(Translate.outermost, [INT], UNIT);
+  ["print", [STRING], UNIT;
+   "getchar", [], STRING;
+   "ord", [STRING], INT;
+   "chr", [INT], STRING;
+   "size", [STRING], INT;
+   "substring", [STRING; INT; INT], STRING;
+   "concat", [STRING; STRING], STRING;
+   "not", [INT], INT;
+   "exit", [INT], UNIT;
   ]
+  |> List.map (fun (n,arg_t,ret_t) ->
+      let formals = List.make (List.length arg_t) true in
+      let lev = Translate.new_level ~add_static_link:false
+          Translate.outermost (Temp.named_label n) formals in
+      n, FuncType (lev, arg_t, ret_t))
   |> List.map (fun (n,t) -> Symbol.of_string n, t)
   |> List.enum
   |> SymbolTable.of_enum

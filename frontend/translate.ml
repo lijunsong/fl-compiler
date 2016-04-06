@@ -6,6 +6,27 @@ open Batteries
 
 module F = SparcFrame
 
+(** Notes on static link: static link (sl) is added during the
+    translation.
+
+    Functions level stored in environment will include the static link
+    which is added during the translation of a function declaration by
+    calling new_level, while function signature does not include the
+    static link.
+
+    When translate a call site, how can we tell whether the callee is
+    a built-in function or a tiger function, or a tiger function that
+    overwrites a built-in one? First all of, type checker will rejects
+    an arity mismatched function call, which leaves us only
+    semantics-correct calls. Recall the frame stores static link for
+    tiger functions. We only need to compare the number of arguments
+    recorded in the callee's frame (static link included if any) and
+    that of its actual arguments (static link also included if
+    any). The callee is a tiger function if the number does not match,
+    an external function if match.
+
+*)
+
 type level = { parent : level option; frame : F.frame; cmp : int } with sexp
 (** level is a wrapper of Frame with additional _static_ scope
  * information *)
@@ -76,13 +97,22 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
-                  frame = F.new_frame (Temp.named_label "main") [];
+                  frame = F.new_frame (Temp.named_label "tigermain") [];
                   cmp = !uniq
                 }
 
-let new_level parent label formals : level =
+(** new_level returns a new level. It accepts an optional option
+    add_static_link, default to true, for two kinds of `level`:
+    external function must confine to C lang's calling convention, so
+    a new_level must not implicitly add a static link; while tiger's
+    function will always accept an extra static link. *)
+let new_level ?(add_static_link=true) parent label formals : level =
   (* add static link *)
-  let fm = F.new_frame label (true :: formals) in
+  let fm = if add_static_link then
+      F.new_frame label (true :: formals)
+    else
+      F.new_frame label formals
+  in
   incr uniq;
   { parent = Some parent; frame = fm; cmp = !uniq }
 
@@ -256,9 +286,14 @@ let rec get_enclosing_level_fp def_level use_level : exp =
     function's level. call will calculate the static link. *)
 let call def_level use_level args : exp =
   let label = F.get_name def_level.frame in
-  let sl_exp = get_enclosing_level_fp def_level use_level in
   let args_ir = List.map (fun arg -> unEx arg) args in
-  Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
+  if List.length (get_formals def_level) = List.length args_ir then
+    (* This is a tiger function *)
+    let sl_exp = get_enclosing_level_fp def_level use_level in
+    Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
+  else
+    Ex(Ir.CALL(Ir.NAME(label), args_ir))
+
 
 (** FIXME:
     1. is empty fields allowed? NO

@@ -249,6 +249,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       end
   in
   trans_iter decls tenv venv []
+
 (**
  * @param curr_level: function level
  * @param break_to: a label used for Break statement. None means not in a loop
