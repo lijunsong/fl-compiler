@@ -1,0 +1,6 @@
+let var c := 4
+    function g(a:int):int =
+       c
+in
+        g(1)
+end

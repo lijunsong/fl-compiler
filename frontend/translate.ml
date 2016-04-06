@@ -160,21 +160,37 @@ let break lab : exp = Nx(Ir.JUMP(Ir.NAME(lab), [lab]))
 
 let no_value () : exp = Nx(Ir.EXP(Ir.CONST(0)))
 
-let rec simple_var (acc : access) (use_level : level) : exp =
+(** Note: simply recursive does not work. Bug occurs for simple case:
+
+    let var c := 4 function g(a:int):int = c in
+    g(1)
+    end
+
+    variable generates: (mem + (mem (+ fp InMEM(offset_c)))
+    offset_arg0). example: sparc: (mem + (mem (+ fp 2039)) 2175), 2039
+    is the first local var, 2175 is the first argment. The correct one is
+    (mem + (mem (+ fp 2175)) 2039)
+
+*)
+let simple_var (acc : access) (use_level : level) : exp =
   let def_level, fm_acc = acc in
-  if use_level = def_level then
-    let ir = F.get_exp (Ir.TEMP(F.fp)) fm_acc in
-    Ex(ir)
+  (* check_level is current following-up level, fp_exp is an
+     expression that describes fp from use_level to check_level. *)
+  let rec get_var (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
+    if check_level = def_level then
+      let ir = F.get_exp fp_exp fm_acc in
+      ir
   else
-    (* get static link *)
-    let sl : F.access = get_static_link use_level in
-    (* follow up to find the def_level *)
-    match use_level.parent with
+    match check_level.parent with
     | None -> failwith "Undefined Variable. Type Checker has bugs."
     | Some (parent) ->
-       let follow_up = unEx(simple_var acc parent) in
-       let ir = F.get_exp follow_up sl in
-       Ex(ir)
+      (* get static link *)
+      let sl : F.access = get_static_link check_level in
+      (* follow up to find the def_level *)
+      let fp_exp' = F.get_exp fp_exp sl in
+      get_var parent fp_exp'
+  in
+  Ex(get_var use_level (Ir.TEMP(F.fp)))
 
 let var_field (exp : exp) (fld : Symbol.t) fld_list : (exp * 'a) option =
   let rec find_rec fld fld_lst offset = match fld_lst with
@@ -268,18 +284,22 @@ let assign (lhs : exp) (rhs : exp) : exp =
     is f1's arg0.
 *)
 let rec get_enclosing_level_fp def_level use_level : exp =
-  if def_level = use_level then
-    let sl : F.access = get_static_link use_level in
-    Ex(F.get_exp (Ir.TEMP(F.fp)) sl)
+
+  let rec get_fp (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
+    if def_level = check_level then
+      let sl : F.access = get_static_link check_level in
+      F.get_exp fp_exp sl
   else
-    match def_level.parent, use_level.parent with
-    | Some (def_parent), _ when def_parent = use_level ->
-      Ex(Ir.TEMP(F.fp))
-    | Some (def_parent), Some (use_parent) ->
-      let prev = unEx(get_enclosing_level_fp def_level use_parent) in
-      let sl : F.access = get_static_link use_level in
-      Ex(F.get_exp prev sl)
+    match def_level.parent, check_level.parent with
+    | Some (def_parent), _ when def_parent = check_level ->
+      fp_exp
+    | Some (def_parent), Some (check_parent) ->
+      let sl : F.access = get_static_link check_level in
+      let fp_exp' = F.get_exp fp_exp sl in
+      get_fp  check_parent fp_exp'
     | _ -> failwith "static link not found"
+  in
+  Ex(get_fp use_level (Ir.TEMP(F.fp)))
 
 
 (** def_level is the callee's own level. use_level is calling
