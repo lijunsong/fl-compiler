@@ -1,5 +1,8 @@
 #undef __STDC__
+#undef getchar
+
 #include <stdio.h>
+#include <stdlib.h>
 
 
 int *initArray(int size, int init)
@@ -100,7 +103,12 @@ int not(int i)
 { return !i;
 }
 
-#undef getchar
+void assert(int i) {
+    if (!i) {
+        printf("assertion failed\n");
+        abort();
+    }
+}
 
 struct string *getchar()
 {int i=getc(stdin);

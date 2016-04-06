@@ -79,6 +79,7 @@ let valEnv : valEnv =
    "concat", [STRING; STRING], STRING;
    "not", [INT], INT;
    "exit", [INT], UNIT;
+   "assert", [INT], UNIT;
   ]
   |> List.map (fun (n,arg_t,ret_t) ->
       let formals = List.make (List.length arg_t) true in
