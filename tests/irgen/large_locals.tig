@@ -1,5 +1,5 @@
 /* correct declarations */
-let 
+let
 
 type arrtype1 = array of int
 type rectype1 = {name:string, address:string, id: int , age: int}
@@ -12,19 +12,31 @@ var arr1 := arrtype1 [10] of 0
 var arr2  := arrtype2 [5] of rectype1 {name="aname", address="somewhere", id=0, age=0}
 var arr3:arrtype3 := arrtype3 [100] of ""
 
-var rec1 := rectype1 {name="Kapoios", address="Kapou", id=02432, age=44}
-var rec2 := rectype2 {name="Allos", dates= arrtype1 [3] of 1900}
+var rec1 := rectype1 {name="rec1", address="none", id=02432, age=44}
+var rec2 := rectype2 {name="rec2", dates= arrtype1 [3] of 1900}
 
 in
 
-arr1[0] := 1; 
+assert(arr1[9] = 0);
 arr1[9] := 3;
-arr2[3].name := "kati";
-arr2[1].age := 23;
-arr3[34] := "sfd";
+assert(arr1[9] = 3);
 
-rec1.name := "sdf";
-rec2.dates[0] := 2323;
-rec2.dates[2] := 2323
+assert(arr2[1].name = "aname");
+assert(arr2[1].address = "somewhere");
+
+arr2[1].name := "kati";
+arr2[1].age := 23;
+assert(arr2[1].name = "kati");
+assert(arr2[1].age = 23);
+
+arr3[34] := "kati";
+assert(arr3[34] = arr2[1].name);
+
+assert(rec1.name = "rec1");
+rec1.id := 3;
+rec2.dates[0] := rec1.id;
+assert(rec2.dates[0] = rec1.id);
+assert(rec2.dates[0] = 3)
+
 
 end

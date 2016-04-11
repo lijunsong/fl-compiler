@@ -10,5 +10,5 @@ type treelist = {hd: tree, tl: treelist}
 var lis:intlist := intlist { hd=0, tl= intlist {hd=1, tl= intlist {hd= 2, tl=nil}} }
 
 in
-	lis
+	assert(lis.tl.tl.hd = 2)
 end

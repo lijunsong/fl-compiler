@@ -10,18 +10,22 @@ all:
 
 clean:
 	ocamlbuild -clean
+	find test -name '*.s' -o -name '*.out' -exec rm {} \;
 
 tests:
 	for p in $(all_tests); do \
 	ocamlbuild -use-ocamlfind $${p%.ml}.byte; \
 	done
 
-testbuild:
+testbuild: all
 	for t in $(cg_tests); do \
-	./main.byte -load $$t -codegen1 -p > $${t%.tig}.s; \
+	./main.byte -load $$t -codegen1 -p > $${t%.tig}.s 2>/dev/null; \
+	test $$? -eq 0 && echo "passed: $$t" || echo "failed: $$t"; \
 	done
 
 testcg:
-	for t in $(shell ls *.s); do \
-	gcc -o $${t%.s}.out -m64 util/runtime.c $$t; \
+	for t in $(cg_tests); do \
+	f=$${t%.tig}.out; \
+	gcc -o $$f -m64 util/runtime.c $$t 2>/dev/null; \
+	./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
 	done

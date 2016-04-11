@@ -1,11 +1,18 @@
-/* synonyms are fine */
-
-let 
+let
 		type a = array of int
 		type b = a
 
 		var arr1:a := b [10] of 0
 in
                 arr1[2] := 99;
-		arr1[2]
+                assert(arr1[0] = 0);
+                assert(arr1[1] = 0);
+		assert(arr1[2] = 99);
+                assert(arr1[3] = 0);
+                assert(arr1[4] = 0);
+                assert(arr1[5] = 0);
+                assert(arr1[6] = 0);
+                assert(arr1[7] = 0);
+                assert(arr1[8] = 0);
+                assert(arr1[9] = 0)
 end

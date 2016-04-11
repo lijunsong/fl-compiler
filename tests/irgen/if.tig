@@ -1,2 +1,4 @@
-/* correct if */
-if (10 > 20) then 30 else 40	
+let var a := 30 in
+assert((if (10 > 20) then a else 40) = 40);
+assert((if (10 < 20) then a else 40) = a)
+end

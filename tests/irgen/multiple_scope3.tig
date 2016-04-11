@@ -11,4 +11,4 @@ let var c:= 10
          in f5() end
       in f3() end
     in f2() end
-in f1() end /*12*/
+in assert(f1() = 12) end /*12*/

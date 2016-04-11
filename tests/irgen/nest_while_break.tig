@@ -1,12 +1,14 @@
 /* while */
 
-let var i := 0 in
+let var sum := 0 in
    while(1) do (
-           i := i + 1;
+           sum := sum + 1;
            (while (1) do (
-                 i := i + 2;
-                 if i > 5 then break
+                 sum := sum + 2;
+                 if sum > 10 then break
            ));
-           if i > 10 then break
-   )
+           assert(sum = 11);
+           if sum > 12 then break
+   );
+   assert(sum = 13)
 end

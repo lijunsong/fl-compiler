@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern int tigermain(int);
 
 int *initArray(int size, int init)
 {int i;
@@ -110,7 +111,7 @@ void assert(int i) {
     }
 }
 
-struct string *getchar()
+struct string *tiger_getchar()
 {int i=getc(stdin);
  if (i==EOF) return &empty;
  else return consts+i;

@@ -1,8 +1,9 @@
 /* locals hide globals */
 let
 	var a:=0
-
+        var b:=1
 	function g(a:int):int = a + 1
 in
- g(a)
+
+ assert(g(b) = 2)
 end

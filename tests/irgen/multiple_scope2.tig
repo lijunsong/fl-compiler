@@ -10,4 +10,4 @@ let
                  in f4() end  /* 4. pass fp */
            in f3() end  /* 3. pass fp */
      in f2() end  /* 2. pass fp */
-in f1() end  /* 1. pass fp */
+in assert(f1() = 100) end  /* 1. pass fp */

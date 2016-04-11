@@ -4,7 +4,8 @@ let
 	var a:= 0
 in 
 	for i:=0 to 100 do (
-            if i < 5 then break;
+            if i = 6 then break;
             a:=a+1;
-            ())
+            ());
+        assert(a = 6)
 end

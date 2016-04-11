@@ -5,5 +5,5 @@ let
 	var a : string := " "
         var a := 99
 in
-	a
+	assert(a = 99)
 end

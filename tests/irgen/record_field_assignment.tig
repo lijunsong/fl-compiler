@@ -1,6 +1,7 @@
-let 
+let
 	type rectype = {name:string , id:int}
 	var rec1 := rectype {name="give me a big name", id=0}
 in
-	rec1.name := "asd"
+	rec1.name := "a";
+        assert(rec1.name = "a")
 end

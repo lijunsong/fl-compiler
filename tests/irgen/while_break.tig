@@ -3,5 +3,6 @@ let var i := 0 in
    while(1) do (
            i := i + 1;
            if i > 5 then break
-   )
+   );
+   assert(i = 6)
 end
