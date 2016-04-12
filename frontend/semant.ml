@@ -175,7 +175,8 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
       if not (compatible_type ret_t body_t) then
         expect_type pos (Types.t_to_string ret_t) body_t
       else begin
-        Translate.proc_entry_exit level body_ir;
+        let is_procedure = (ret_t = Types.UNIT) in
+        Translate.proc_entry_exit ~is_procedure level body_ir;
         trfunc_decl curr_level tenv venv tl
       end
   in
@@ -486,9 +487,15 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
   in
   trexp expr
 
+(** When the last expr of the body is a procedure call, which return
+    UNIT, calling proc_extry_exit will move procedure's return value
+    to a return register. As the procedure does not write anything to
+    that register, it is possible that the register contains a garbage
+    value. *)
 let trans_prog (e : S.exp) : Translate.frag list =
   let body, t = trans_exp Translate.outermost None Types.typeEnv Types.valEnv e in
-  Translate.proc_entry_exit Translate.outermost body;
+  let is_procedure = (t = Types.UNIT) in
+  Translate.proc_entry_exit ~is_procedure Translate.outermost body;
   Translate.get_result()
 
 

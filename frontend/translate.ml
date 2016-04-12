@@ -426,11 +426,15 @@ let let_body exp_lst exp : exp =
   let ir_lst = List.map (fun e -> unNx e) exp_lst in
   Ex(Ir.ESEQ(Ir.seq ir_lst, unEx exp))
 
-let proc_entry_exit level fbody : unit =
+let proc_entry_exit ?(is_procedure=false) level fbody : unit =
   let fm = level.frame in
   (* Front-end here must know which machine register is used for
      returning value. *)
-  let body = Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
+  let body = if is_procedure then
+      Ir.SEQ(unNx fbody,
+             Ir.MOVE(Ir.TEMP(F.rv), Ir.CONST(0)))
+    else
+      Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
   (* do view shift *)
   let stmt = F.proc_entry_exit1 fm body in
   frag_list := F.PROC(stmt, fm) :: !frag_list

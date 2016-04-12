@@ -106,6 +106,6 @@ val let_body : exp list -> exp -> exp
     Call [get_result] to get all fragments.  This is the main function
     to implement prologue and epilogue of functions
 *)
-val proc_entry_exit : level -> exp -> unit
+val proc_entry_exit : ?is_procedure:bool -> level -> exp -> unit
 
 val get_result : unit -> frag list

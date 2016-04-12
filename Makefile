@@ -26,6 +26,5 @@ testbuild: all
 testcg:
 	for t in $(cg_tests); do \
 	f=$${t%.tig}.out; \
-	gcc -o $$f -m64 util/runtime.c $$t 2>/dev/null; \
-	./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
+	gcc -o $$f -m64 util/runtime.c $${t%.tig}.s 2>/dev/null && ./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
 	done
