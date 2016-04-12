@@ -2,10 +2,10 @@ let
 	type rectype = {name:string , id:int}
 	var rec1 := rectype {name="aname", id=0}
 in
-        assert(rec1.name = "aname");
-        assert(rec1.id = 0);
+    assert(rec1.name = "aname");
+    assert(rec1.id = 0);
 	rec1.name := "some name";
-	rec1.id := 3
-        assert(rec1.name = "some name");
-        assert(rec1.id = 3)
+	rec1.id := 3;
+    assert(rec1.name = "some name");
+    assert(rec1.id = 3)
 end

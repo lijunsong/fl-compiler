@@ -268,15 +268,20 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
           Translate.simple_var acc curr_level, t
         | Some (typ) -> expect_vtype pos "non-function" typ
       end
-    | S.VarField (pos, var1, sym) -> begin
-        match trvar var1 with
-        | base, Types.RECORD (lst, _) ->
+    | S.VarField (pos, var1, sym) ->
+        let base, actual_t = trvar var1 in
+        let actual_t' = match actual_t with
+          | Types.NAME(name, _) -> get_type pos name tenv
+          | t -> t
+        in
+        begin match actual_t' with
+        | Types.RECORD (lst, _) ->
           begin
             match Translate.var_field base sym lst with
             | None -> raise_undef pos sym
             | Some (e) -> e
           end
-        | _, t -> expect_type pos "record" t
+        | t -> expect_type pos "record" t
 
       end
     | S.VarSubscript(pos, var1, e) ->
