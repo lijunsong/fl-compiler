@@ -1,0 +1,7 @@
+let 
+	type rectype = {name:string , id:int}
+	var rec1 := rectype {name="aname", id=0}
+	var rec2 := rectype {name="aname", id=0}
+in
+        assert(rec1 <> rec2)
+end

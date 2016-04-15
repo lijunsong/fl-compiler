@@ -10,7 +10,7 @@ all:
 
 clean:
 	ocamlbuild -clean
-	find test -name '*.s' -o -name '*.out' -exec rm {} \;
+	find tests -name '*.s' -exec rm {} \;
 
 tests:
 	for p in $(all_tests); do \
