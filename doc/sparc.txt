@@ -1,0 +1,9 @@
+sparc backend
+-------------
+SCD.2.4.1.pdf
+SPARCV9.pdf
+sparc.assembly.pdf
+
+i386
+----
+http://sco.com/developers/devspecs/abi386-4.pdf
