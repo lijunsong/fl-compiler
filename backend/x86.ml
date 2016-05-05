@@ -71,7 +71,7 @@ module X86Frame : Frame = struct
                     if f then
                       InMem(word_size*i + 8)
                     else
-                      InReg(Temp.new_temp()));
+                      InReg(Temp.new_temp())) formals;
       locals = []}
 
   let get_name (fm : frame) = fm.name
@@ -83,6 +83,8 @@ module X86Frame : Frame = struct
     fm.locals <- loc :: fm.locals;
     incr count_locals;
     loc
+
+  let bias = 0
 
   (** Given an expression for the base of an frame and given the
   access of that frame, return an expression for contents of the
@@ -104,13 +106,63 @@ module X86Frame : Frame = struct
   shift only load each argument into temporaries. *)
   let proc_entry_exit1 fm stmt =
     let movs = List.map (fun acc ->
-                   let src = match acc with
-                     | InReg(t) -> Ir.Temp(t)
-                     | InMem(offset) as acc -> get_exp (Ir.TEMP(fp)) acc in
-                   Ir.MOVE(Ir.TEMP(Temp.new_temp()), src))
-                        fm.formals
+        let src = match acc with
+          | InReg(t) -> Ir.TEMP(t)
+          | InMem(offset) as acc -> get_exp (Ir.TEMP(fp)) acc in
+        Ir.MOVE(Ir.TEMP(Temp.new_temp()), src))
+        fm.formals
     in
     Ir.SEQ(Ir.seq movs, stmt)
 
+  let proc_entry_exit2 f instrs =
+    let live_reg = List.map get_temp ["%ebx"; "%edi"; "%esi"] in
+    instrs @ [Assem.OP("", [], live_reg, None)]
+
+  let proc_entry_exit3 f body =
+    let stack_size = get_stack_size f.formals f.locals in
+    let f_name = get_name f |> Temp.label_to_string in
+    let prolog = [
+      "global " ^ f_name;  (* TODO: not all functions are global*)
+      f_name ^ ":";         (* function start *)
+      "push %ebp";
+      "movl %esp, %ebp";
+      "pushl %edi";  (* TODO: push these two only when they are used. *)
+      "pushl %esi";
+      sprintf "subl %%esp, $%d" stack_size; (* register window shift*)
+    ] in
+    (* NOTE: remember epilog takes a delay-slot. *)
+    let epil = [
+      sprintf "addl $%d, %%esp" stack_size;
+      "popl %esi";
+      "popl %edi";
+      "popl %ebp";
+      "retl";
+    ] in
+    (prolog @ body) @ epil
+
+  let external_call f args =
+    Ir.CALL(Ir.NAME(Temp.named_label f), args)
+
+  let debug_dump fm =
+    Sexp.output_hum Pervasives.stdout (sexp_of_frame fm);
+    print_string "\n"
+
+  (** Local Labels on X86 starts with "_". This function is duplicated
+      in codegen *)
+  let assembly_label_string l : string =
+    "_" ^ (Temp.label_to_string l)
+
+  (** The implementation of string is interesting. If runtime.c
+      defines the length as a long long, we need a xword instead of a
+      word here. As currently runtime.c defines length as an int, we
+      just need a word to store its length.*)
+  let string l s =
+    let l_str = assembly_label_string l in
+    let str = [
+      l_str ^ ":";
+      sprintf ".word %d" (String.length s);
+      sprintf ".ascii \"%s\"" s;
+    ] in
+    String.concat "\n" str
 
 end
