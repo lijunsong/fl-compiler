@@ -1,12 +1,13 @@
 .PHONY: tests all clean compile testcg
 
 TESTDIR = tests
+TC=tigerc
 
 all_tests = $(shell ls $(TESTDIR)/test*)
 cg_tests = $(shell ls $(TESTDIR)/irgen/*.tig)
 
 all:
-	ocamlbuild -use-ocamlfind -yaccflag -v main.byte
+	ocamlbuild -use-ocamlfind -yaccflag -v $(TC).byte
 
 clean:
 	ocamlbuild -clean
@@ -19,7 +20,7 @@ tests:
 
 testbuild: all
 	for t in $(cg_tests); do \
-	./main.byte -load $$t -codegen1 -p > $${t%.tig}.s 2>/dev/null; \
+	./$(TC).byte -load $$t -codegen1 -p > $${t%.tig}.s 2>/dev/null; \
 	test $$? -eq 0 && echo "passed: $$t" || echo "failed: $$t"; \
 	done
 
