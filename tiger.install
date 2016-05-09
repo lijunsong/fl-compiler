@@ -1,3 +1,7 @@
 bin: [
     "tigerc.byte" {"tigerc"}
 ]
+
+lib: [
+    "_build/frontend/temp.cma" { "frontend/temp.cma" }
+]

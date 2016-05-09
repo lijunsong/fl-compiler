@@ -8,6 +8,7 @@ cg_tests = $(shell ls $(TESTDIR)/irgen/*.tig)
 
 all:
 	ocamlbuild -use-ocamlfind -yaccflag -v $(TC).byte
+	ocamlbuild -use-ocamlfind -yaccflag -v temp.cma
 
 clean:
 	ocamlbuild -clean

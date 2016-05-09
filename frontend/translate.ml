@@ -4,7 +4,7 @@ open Symbol
 open Sparc
 open Batteries
 
-module F = SparcFrame
+module F = X86Frame
 
 (** Notes on static link: static link (sl) is added during the
     translation.
