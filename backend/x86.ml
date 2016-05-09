@@ -1,4 +1,6 @@
 open Frame
+open Sexplib.Std
+open Sexplib
 open Batteries
 open Printf
 
@@ -77,6 +79,11 @@ module X86Frame : Frame = struct
   let get_name (fm : frame) = fm.name
   let get_formals (fm : frame) = fm.formals
 
+  (** Local Labels on X86 starts with "_". This function is duplicated
+      in codegen *)
+  let assembly_label_string l : string =
+    "_" ^ (Temp.label_to_string l)
+
   (** locals are indexed based on fp. *)
   let alloc_local fm escape =
     let loc = InMem((-word_size) * !count_locals) in
@@ -120,15 +127,15 @@ module X86Frame : Frame = struct
 
   let proc_entry_exit3 f body =
     let stack_size = get_stack_size f.formals f.locals in
-    let f_name = get_name f |> Temp.label_to_string in
+    let f_name = get_name f |> assembly_label_string in
     let prolog = [
-      "global " ^ f_name;  (* TODO: not all functions are global*)
+      ".global " ^ f_name;  (* TODO: not all functions are global*)
       f_name ^ ":";         (* function start *)
       "push %ebp";
       "movl %esp, %ebp";
       "pushl %edi";  (* TODO: push these two only when they are used. *)
       "pushl %esi";
-      sprintf "subl %%esp, $%d" stack_size; (* register window shift*)
+      sprintf "subl $%d, %%esp" stack_size; (* register window shift*)
     ] in
     (* NOTE: remember epilog takes a delay-slot. *)
     let epil = [
@@ -146,11 +153,6 @@ module X86Frame : Frame = struct
   let debug_dump fm =
     Sexp.output_hum Pervasives.stdout (sexp_of_frame fm);
     print_string "\n"
-
-  (** Local Labels on X86 starts with "_". This function is duplicated
-      in codegen *)
-  let assembly_label_string l : string =
-    "_" ^ (Temp.label_to_string l)
 
   (** The implementation of string is interesting. If runtime.c
       defines the length as a long long, we need a xword instead of a

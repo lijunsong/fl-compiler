@@ -1,7 +1,7 @@
 open Sexplib.Std
 open Sexplib
 open Symbol
-open Sparc
+open X86
 open Batteries
 
 module F = X86Frame

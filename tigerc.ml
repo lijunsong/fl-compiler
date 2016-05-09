@@ -4,7 +4,6 @@ open Parse
 open Printf
 open Batteries
 
-
 type linear = Ir.stmt list
 
 type basicblocks = Ir.stmt list list
@@ -38,7 +37,7 @@ let program = ref EMPTY
 
 let assem_proc_to_string get_register_name (instr_list, fm) =
   let body = List.map (fun instr ->
-      Codegen.format get_register_name instr) instr_list in
+      Codegen_x86.format get_register_name instr) instr_list in
   let all = Translate.F.proc_entry_exit3 fm body in
   all
 
@@ -125,8 +124,7 @@ let print_lang lang =
             assem in
         assem'
       ) allocs in
-    let text_header = [".section \".text\"";
-                       ".align 16"] |> String.concat "\n" in
+    let text_header = "" in
     let str = String.concat "\n" str_list in
     (* emit text header and the code text *)
     let () = print_endline text_header in
@@ -135,7 +133,7 @@ let print_lang lang =
     let frags = List.map (fun frag -> match frag with
         | Translate.F.PROC(_) -> failwith "proc found in string frags."
         | Translate.F.STRING(l, s) -> (l, s)) str_frags in
-    let data = Codegen.codegen_data frags in
+    let data = Codegen_x86.codegen_data frags in
     print_endline data
 
 
@@ -220,7 +218,7 @@ let to_assem () =
   | TRACE (procs, str_frags) ->
     let res = List.map (fun (ir, frame) ->
         let seq = Ir.seq ir in
-        Codegen.codegen frame seq, frame) procs in
+        Codegen_x86.codegen frame seq, frame) procs in
     program := ASSEM(res, str_frags);
   | _ -> failwith "Can't convert to assemly"
 
