@@ -127,7 +127,8 @@ module X86Frame : Frame = struct
 
   let proc_entry_exit3 f body =
     let stack_size = get_stack_size f.formals f.locals in
-    let f_name = get_name f |> assembly_label_string in
+    (* caveat here: x86 uses _FOO as function foo's name. *)
+    let f_name = get_name f |> Temp.label_to_string in
     let prolog = [
       ".global " ^ f_name;  (* TODO: not all functions are global*)
       f_name ^ ":";         (* function start *)
@@ -135,9 +136,8 @@ module X86Frame : Frame = struct
       "movl %esp, %ebp";
       "pushl %edi";  (* TODO: push these two only when they are used. *)
       "pushl %esi";
-      sprintf "subl $%d, %%esp" stack_size; (* register window shift*)
+      sprintf "subl $%d, %%esp" stack_size;
     ] in
-    (* NOTE: remember epilog takes a delay-slot. *)
     let epil = [
       sprintf "addl $%d, %%esp" stack_size;
       "popl %esi";

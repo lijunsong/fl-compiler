@@ -76,7 +76,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
   match exp with
   | Ir.CONST(i) ->
     result(fun t ->
-        OP("mov " ^ (string_of_int i) ^ ", 'd0", [t], [], None)
+        OP("mov $" ^ (string_of_int i) ^ ", 'd0", [t], [], None)
         |> emit)
   | Ir.NAME(l) ->
     result(fun t ->
@@ -93,9 +93,13 @@ let rec munch_exp (exp : Ir.exp) : temp =
                 [t], [r0], None));
         emit(OP(sprintf "%s 's0, 'd0" instr, [t], [r1], None)))
   | Ir.CALL (Ir.NAME(l), args) ->
+    (* Caveat: CALL could be external calls (like calls in runtime),
+       or user defined tiger function calls. Keep name as it is
+       here. Any mangled name should be done before the NAME is
+       generated. *)
     let () = munch_args args in
     result(fun t ->
-      emit(OP("call " ^ (assembly_label_string l), call_write_regs, [], None)))
+      emit(OP("call " ^ (Temp.label_to_string l), call_write_regs, [], None)))
   | Ir.MEM (e) ->
     let r0 = munch_exp e in
     result(fun t ->
@@ -114,9 +118,14 @@ and munch_stmt (stmt : Ir.stmt) : unit =
     munch_stmt s0;
     munch_stmt s1
   | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs) ->
+    (* move to memory *)
     let lhs = munch_exp ir_lhs in
     let v = munch_exp ir_rhs in
     OP(sprintf "mov 's0, %d('s1)" n, [], [v; lhs], None) |> emit
+  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n)))) ->
+    (* move from memory to register *)
+    let lhs = munch_exp ir_lhs in
+    OP(sprintf "mov %d('s0), 's1" n, [], [lhs; r], None) |> emit
   | Ir.MOVE (Ir.MEM(e), e1) ->
     let src = munch_exp e in
     let moveto = munch_exp e1 in

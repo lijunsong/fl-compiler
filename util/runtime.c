@@ -1,8 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #undef __STDC__
 #undef getchar
 
-#include <stdio.h>
-#include <stdlib.h>
 
 extern int tigermain(int);
 
