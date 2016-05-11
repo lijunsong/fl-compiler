@@ -12,6 +12,26 @@ let nop = OP("nop", [], [], None)
 let emit instr : unit =
   instr_list := instr :: !instr_list
 
+let emit_comment_exp exp : unit =
+  if !Debug.debug = false then
+    ()
+  else
+    let s = Ir.exp_to_string exp
+            |> String.replace_chars (fun c ->
+                if c = '\n' then " "
+                else String.of_char c ) in
+    instr_list := OP("; " ^ s, [], [], None) :: !instr_list
+
+let emit_comment_stmt stmt : unit =
+  if !Debug.debug = false then
+    ()
+  else
+    let s = Ir.stmt_to_string stmt
+            |> String.replace_chars (fun c ->
+                if c = '\n' then " "
+                else String.of_char c ) in
+    instr_list := OP("; " ^ s, [], [], None) :: !instr_list
+
 let assembly_label_string l : string =
   "_" ^ (Temp.label_to_string l)
 
@@ -70,9 +90,11 @@ let relop_to_instr = function
 (**/ the following describe registers *)
 
 (** registers to which a call replaces its results *)
-let call_write_regs = []
+let call_write_regs = [F.get_temp "%eax"]
+let sp = F.get_temp "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
+  emit_comment_exp exp;
   match exp with
   | Ir.CONST(i) ->
     result(fun t ->
@@ -89,30 +111,45 @@ let rec munch_exp (exp : Ir.exp) : temp =
     let r1 = munch_exp e1 in
     let instr = binop_to_instr op in
     result(fun t ->
-        emit(OP(sprintf "%s 's0, 'd0" instr,
-                [t], [r0], None));
+        emit(MOVE("mov 's0, 'd0", t, r0));
         emit(OP(sprintf "%s 's0, 'd0" instr, [t], [r1], None)))
   | Ir.CALL (Ir.NAME(l), args) ->
     (* Caveat: CALL could be external calls (like calls in runtime),
        or user defined tiger function calls. Keep name as it is
        here. Any mangled name should be done before the NAME is
        generated. *)
+    (* Caveat 2: after call, we need to manually unwind the stack. *)
     let () = munch_args args in
     result(fun t ->
-      emit(OP("call " ^ (Temp.label_to_string l), call_write_regs, [], None)))
+        (* Caveat 3: it is appealing to put eax as a dest reg
+           here. But this t represents the result of the call, and
+           will be used by others. *)
+        emit(OP("call " ^ (Temp.label_to_string l), [t], [], None));
+        emit(MOVE("mov 's0, 'd0", F.rv, t));
+        (* unwind the stack *)
+        let arg_n = List.length args in
+        if arg_n <> 0 then
+          emit(OP(sprintf "addl $%d, 's0" (arg_n * F.word_size), [sp], [sp], None)))
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n))) ->
+    result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
   | Ir.MEM (e) ->
     let r0 = munch_exp e in
-    result(fun t ->
-        emit(OP("mov ('s0), 'd0", [t], [r0], None)))
+    result(fun t -> emit(OP("mov ('s0), 'd0", [t], [r0], None)))
   | _ -> failwith "NYI"
 
-(* x86-32 passes arguments on stack, so munch_args returns unit *)
+(* x86-32 passes arguments on stack, so munch_args returns unit.
+   The right most argument is pushed first.
+ *)
 and munch_args args : unit =
-  List.map munch_exp args
-  |> List.iter (fun t ->
-      emit(OP("push 's0", [], [t], None)))
+  match args with
+  | [] -> ()
+  | arg :: rest ->
+    munch_args rest;
+    let t = munch_exp arg in
+    emit(OP("push 's0", [], [t], None))
 
 and munch_stmt (stmt : Ir.stmt) : unit =
+  emit_comment_stmt stmt;
   match stmt with
   | Ir.SEQ (s0, s1) ->
     munch_stmt s0;
@@ -129,7 +166,7 @@ and munch_stmt (stmt : Ir.stmt) : unit =
   | Ir.MOVE (Ir.MEM(e), e1) ->
     let src = munch_exp e in
     let moveto = munch_exp e1 in
-    (* dst is [], because it is the memory not the reg that holds the value *)
+    (* dst is (), because it is the memory not the reg that holds the value *)
     OP("mov 's0, ('s1)", [], [moveto; src], None)
     |> emit
   | Ir.MOVE (Ir.TEMP(t), e) ->
