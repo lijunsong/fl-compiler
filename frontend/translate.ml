@@ -209,7 +209,8 @@ let var_field (exp : exp) (fld : Symbol.t) fld_list : (exp * 'a) option =
 
 
 let var_subscript base idx : exp =
-  Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, unEx base, unEx idx)))
+  let idx' = Ir.BINOP(Ir.MUL, unEx idx, Ir.CONST(F.word_size)) in
+  Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, unEx base, idx')))
 
 let binop op operand1 operand2 =
   let rand1 = unEx operand1 in
