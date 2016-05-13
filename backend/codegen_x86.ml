@@ -77,7 +77,7 @@ let binop_to_instr = function
   | Ir.PLUS -> "addl"
   | Ir.MINUS -> "subl"
   | Ir.MUL -> "imull"
-  | _ -> failwith "NYI"
+  | _ -> failwith "NYI binop_to_instr"
 
 let relop_to_instr = function
   | Ir.EQ -> "je"
@@ -114,12 +114,13 @@ let rec munch_exp (exp : Ir.exp) : temp =
     result(fun t ->
         emit(MOVE("mov 's0, 'd0", t, r0));
         match op with
-          | Ir.PLUS -> OP("addl 's0, 'd0", [t], [r1], None) |> emit
-          | Ir.MINUS -> OP("subl 's0, 'd0", [t], [r1], None) |> emit
-          | Ir.MUL ->
-            emit(MOVE("mov 's0, 'd0", eax, t));
-            emit(OP("imull 's0", [eax], [r1], None));
-          | _ -> failwith "NYI")
+          | Ir.PLUS -> OP("add 's0, 'd0", [t], [r1], None) |> emit
+          | Ir.MINUS -> OP("sub 's0, 'd0", [t], [r1], None) |> emit
+          | Ir.MUL -> emit(OP("imul 's0, 'd0", [t], [r1], None))
+            (*emit(MOVE("mov 's0, 'd0", eax, t));
+            emit(OP("imul 's0", [], [r1], None));
+              emit(MOVE("mov 's0, 'd0", t, eax));*)
+          | _ -> failwith "NYI BINOP")
   | Ir.CALL (Ir.NAME(l), args) ->
     (* Caveat: CALL could be external calls (like calls in runtime),
        or user defined tiger function calls. Keep name as it is
@@ -132,12 +133,12 @@ let rec munch_exp (exp : Ir.exp) : temp =
            here. But this t represents the result of the call, and
            will be used by others. So generate an extra call move
            from eax to t. *)
-        emit(OP("call " ^ (Temp.label_to_string l), [t], [], None));
+        emit(OP("call " ^ (Temp.label_to_string l), [F.rv], [], None));
         emit(MOVE("mov 's0, 'd0", t, F.rv));
         (* unwind the stack *)
         let arg_n = List.length args in
         if arg_n <> 0 then
-          emit(OP(sprintf "addl $%d, 's0" (arg_n * F.word_size), [sp], [sp], None)))
+          emit(OP(sprintf "add $%d, 's0" (arg_n * F.word_size), [sp], [sp], None)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n))) ->
     result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
   | Ir.MEM (e) ->
@@ -152,7 +153,8 @@ and munch_args args : unit =
   match args with
   | [] -> ()
   | Ir.CONST(n) :: rest ->
-    emit(OP(sprintf "push %d" n, [], [], None))
+    munch_args rest;
+    emit(OP(sprintf "push $%d" n, [], [], None))
   | arg :: rest ->
     munch_args rest;
     let t = munch_exp arg in
