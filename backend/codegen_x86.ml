@@ -198,7 +198,8 @@ and munch_stmt (stmt : Ir.stmt) : unit =
     OP("cmp 's0, 's1",
        [], (*NOTE: what is the out register? icc or xcc.
              but we won't use them in register allocation, so ignore it. *)
-       [t0; t1], None)
+       (* Caveat: it is easy to write [t0; t1] here. *)
+       [t1; t0], None)
     |> emit;
     OP(sprintf "%s %s"
          (relop_to_instr relop)
