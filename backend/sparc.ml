@@ -69,7 +69,7 @@ module SparcFrame : Frame = struct
       has offset -word_size from fp *)
   let count_locals = ref 1
 
-  (** formals on Sparc reside at fp + 128, growing upward. *)
+  (** formals on Sparc start at fp + BIAS, growing upward. *)
   let new_frame (name : Temp.label) (formals : bool list) : frame =
     count_locals := 1;
     { name;
@@ -98,7 +98,7 @@ module SparcFrame : Frame = struct
        Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
 
   (** Given #formal and #locals, this function calculates stack
-      size. *)
+      size. Note: 16 bytes Aligned. *)
   let get_stack_size formals locals =
     let formal_n = List.length formals in
     let minimal_size = 176 in
@@ -119,7 +119,7 @@ module SparcFrame : Frame = struct
   (** implement view shift. We only have pointers in tiger, so for all
       escaped args, move from i-x register to its stack slot. For all
       un-escaped args, move from the i-x register to a temporary.
-      view shift doesn't do anything to static link. *)
+      view shift has nothing to do with static link. *)
   let proc_entry_exit1 fm stmt =
     let gen_move idx formal =
       let ireg = ireg_of_index idx in

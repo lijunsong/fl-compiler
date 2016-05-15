@@ -114,7 +114,7 @@ let instrs2graph instrs : flowgraph =
           | None -> Temp.temp_to_string t
           | Some (r) -> r
         in
-        print_string (Codegen.format  get_register_name instr);
+        print_string (Codegen_x86.format  get_register_name instr);
         print_string " -> ";
         print_endline (node_to_string node)
       end)

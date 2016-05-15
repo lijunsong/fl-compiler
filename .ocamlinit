@@ -1,0 +1,6 @@
+#use "topfind";;
+#require "batteries";;
+#directory "_build";;
+#directory "_build/frontend";;
+#directory "_build/backend";;
+open Batteries;;

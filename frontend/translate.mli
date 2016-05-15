@@ -1,5 +1,5 @@
 open Symbol
-open Sparc
+open X86
 
 (** This module translates Syntax to Ir.
  *
@@ -10,7 +10,7 @@ open Sparc
 
 (** TODO: make translate a functor taking Frame as input module *)
 
-module F = SparcFrame
+module F = X86Frame
 
 (** Each nested function declared in Tiger's [let] is in a deeper
     level *)
