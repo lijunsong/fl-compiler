@@ -13,6 +13,15 @@ then print the IR.
 
 ./main.byte -load ./tests/samples/test1.tig -ast -p -ir -p
 
+Dependencies
+------------
+Dependencies are managed via opam. Do
+
+```
+opam pin add .
+```
+
+To install dependencies.
 
 Trouble Shooting
 ----------------
