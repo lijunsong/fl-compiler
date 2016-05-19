@@ -4,11 +4,11 @@ open Symbol
 open Batteries
 
 (** abstract names for static memory location *)
-type label with sexp
+type label
 
 (** a value temporarly held in registers, which we assumed to be
   infinite *)
-type temp with sexp
+type temp
 
 val new_temp : unit -> temp
 

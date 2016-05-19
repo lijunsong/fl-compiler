@@ -7,5 +7,3 @@ B _build/backend
 B _build/tests
 PKG Batteries
 PKG OUnit
-PKG Sexplib
-EXT Pa_sexp_conv

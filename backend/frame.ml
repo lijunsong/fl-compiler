@@ -1,15 +1,17 @@
 (** Machine-independent activation record. *)
 module type Frame = sig
-  type register = string with sexp
+  type register = string
 
-  type frame with sexp
+  type frame
 
-  type access with sexp
+  type access
 
   type frag =
     | PROC of Ir.stmt * frame
     | STRING of Temp.label * string
-  with sexp
+
+  (** debug *)
+  val frag_to_string: frag -> string
 
   (** all register names for the target machines *)
   val registers: register list

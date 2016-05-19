@@ -5,17 +5,16 @@
     integer.
 *)
 
-open Sexplib.Std
 open Batteries
 
 module Symbol : sig
-  type t with sexp
+  type t
   val compare : t -> t -> int
   val of_string : string -> t
   val to_string : t -> string
 end =
 struct
-  type t = string * int with sexp
+  type t = string * int
 
   let compare ((_, i1) : t) ((_, i2) : t) = compare i1 i2
 

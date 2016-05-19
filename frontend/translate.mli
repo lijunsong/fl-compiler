@@ -21,9 +21,11 @@ type access
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
-  | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
+  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-type frag = F.frag with sexp
+type frag = F.frag
+
+val frag_to_string: frag -> string
 
 val unEx : exp -> Ir.exp
 

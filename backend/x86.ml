@@ -1,36 +1,47 @@
 open Frame
-open Sexplib.Std
-open Sexplib
 open Batteries
 open Printf
 
 (** This could be a functor. There is a lot of common code in x86 and
-sparc *)
+    sparc *)
 module X86Frame : Frame = struct
-  type register = string with sexp
+  type register = string
 
   type access =
     | InReg of Temp.temp
     | InMem of int
-  with sexp
 
   type frame = {
-      name : Temp.label;
-      formals : access list;
-      mutable locals : access list;
-    } with sexp
+    name : Temp.label;
+    formals : access list;
+    mutable locals : access list;
+  }
+
 
   type frag =
     | PROC of Ir.stmt * frame
     | STRING of Temp.label * string
-  with sexp
+
+  let access_to_string = function
+    | InReg (t) -> "inreg " ^ (Temp.temp_to_string t)
+    | InMem (n) -> "inmem " ^ (string_of_int n)
+
+  let frame_to_string f =
+    Printf.sprintf "%s (%s) {local: %s}"
+      (Temp.label_to_string f.name)
+      (String.concat "," (List.map access_to_string f.formals))
+      (String.concat "," (List.map access_to_string f.locals))
+
+  let frag_to_string = function
+    | PROC (stmt, fm) -> (Ir.stmt_to_string stmt) ^ "\n" ^ (frame_to_string fm) ^ "\n"
+    | STRING (l, s) -> (Temp.label_to_string l) ^ ": " ^ s
 
   let word_size = 4
 
   let registers = [
-      "%eax"; "%ebx"; "%ecx"; "%edx"; "%esi"; "%edi";
-      "%ebp"; "%esp";
-    ]
+    "%eax"; "%ebx"; "%ecx"; "%edx"; "%esi"; "%edi";
+    "%ebp"; "%esp";
+  ]
 
   (* maps from name to temp *)
   module RegNameMap = Map.Make(String)
@@ -39,12 +50,12 @@ module X86Frame : Frame = struct
 
   let reg_name_map = List.map
       (fun reg -> reg, Temp.new_temp()) registers
-                |> List.enum
-                |> RegNameMap.of_enum
+                     |> List.enum
+                     |> RegNameMap.of_enum
 
   let known_temp = RegNameMap.enum reg_name_map
-              |> Enum.map (fun (a,b)->b,a)
-              |> RegMap.of_enum
+                   |> Enum.map (fun (a,b)->b,a)
+                   |> RegMap.of_enum
 
   let get_temp (name : register) =
     try
@@ -70,10 +81,10 @@ module X86Frame : Frame = struct
     count_locals := 1;
     { name;
       formals = List.mapi (fun i f ->
-                    if f then
-                      InMem(word_size*i + 8)
-                    else
-                      InReg(Temp.new_temp())) formals;
+          if f then
+            InMem(word_size*i + 8)
+          else
+            InReg(Temp.new_temp())) formals;
       locals = []}
 
   let get_name (fm : frame) = fm.name
@@ -94,12 +105,12 @@ module X86Frame : Frame = struct
   let bias = 0
 
   (** Given an expression for the base of an frame and given the
-  access of that frame, return an expression for contents of the
-  memory. *)
+      access of that frame, return an expression for contents of the
+      memory. *)
   let get_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc with
     | InReg(temp) -> Ir.TEMP(temp)
     | InMem(offset) ->
-       Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
+      Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
 
   (** Given #formal and #locals, this function calculates stack
       size. 16 bytes aligned. x86 doesn't count formals as part of its
@@ -110,7 +121,7 @@ module X86Frame : Frame = struct
     (local_n/4+1) * 16
 
   (** Implement view shift. x86 passes arguments on stack, so the view
-  shift only load each argument into temporaries. *)
+      shift only load each argument into temporaries. *)
   let proc_entry_exit1 fm stmt =
     let movs = List.map (fun acc ->
         let src = match acc with
@@ -151,8 +162,7 @@ module X86Frame : Frame = struct
     Ir.CALL(Ir.NAME(Temp.named_label f), args)
 
   let debug_dump fm =
-    Sexp.output_hum Pervasives.stdout (sexp_of_frame fm);
-    print_string "\n"
+    print_endline (frame_to_string fm)
 
   (** The implementation of string is interesting. If runtime.c
       defines the length as a long long, we need a xword instead of a
