@@ -10,7 +10,7 @@ BIT=-m32
 
 all:
 	ocamlbuild -use-ocamlfind -yaccflag -v $(TC).byte
-	ocamlbuild -use-ocamlfind -yaccflag -v temp.cma
+	ocamlbuild -use-ocamlfind -yaccflag -v temp.cma parse.cma
 
 clean:
 	ocamlbuild -clean

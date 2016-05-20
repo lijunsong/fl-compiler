@@ -4,4 +4,5 @@ bin: [
 
 lib: [
     "_build/frontend/temp.cma" { "frontend/temp.cma" }
+    "_build/frontend/parse.cma" { "frontend/parse.cma" }
 ]
