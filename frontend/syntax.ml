@@ -74,26 +74,28 @@ let get_exp_pos = function
   | Let (p, _, _) -> p
   | Arr (p, _, _, _) -> p
 
-(**
-   TODO: make a pretty printer for AST
-*)
 let rec exp_to_string e =
-  (*
+  failwith "AST NYI"
+(*
   let open Printf in
+  let open PPrint in
   let pos_str = Pos.to_string (get_exp_pos e) in
   match e with
-  | String (_, s) -> s
-  | Int (_, i) -> string_of_int i
-  | Nil (_) -> "Nil"
-  | Var (_, var) -> var_to_string var
+  | String (_, s) -> text s
+  | Int (_, i) -> text (string_of_int i)
+  | Nil (_) -> text "Nil"
+  | Var (_, var) -> text (var_to_string var)
   | Op (_, op, e0, e1) ->
-    sprintf "(%s %s %s)"
-      (op_to_string op) (exp_to_string e0) (exp_to_string e1)
+    text (op_to_string op) <->
+    text (exp_to_string e0) <->
+    text (exp_to_string e1)
   | Assign (_, var, e) ->
-    sprintf "%s := %s\n" (var_to_string var) (exp_to_string e)
+    text (var_to_string var) <-> text ":=" <-> (exp_to_string e)
   | Call (_, f, args) ->
-    sprintf "%s(%s)" (Symbol.to_string f)
-      (String.concat ", " (List.map (fun e -> exp_to_tring e) args))
+    text (Symbol.to_string f) <->
+    text "(" <->
+    (List.fold_left (<->) Nil (List.map (fun e -> exp_to_tring e) args)) <->
+    text ")"
   | Record(_, t, flds) ->
     sprintf "%s{%s}" (Symbol.to_string t)
       (String.concat ", "
@@ -121,5 +123,4 @@ let rec exp_to_string e =
       vars los vars his vars vars bodys
   | Break _ -> "Break;\n"
   | _ -> failwith
-     *)
-  failwith "AST to string NYI"
+*)
