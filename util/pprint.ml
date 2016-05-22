@@ -1,6 +1,5 @@
 (** This is a half baked implementation of a pretty printer.
 *)
-open Batteries
 
 type doc =
   | Nil
@@ -28,11 +27,14 @@ let concat sep docs : doc =
   let rec iter docs result =
     match docs with
     | [] -> result
-    | [hd] -> hd <-> result
     | hd :: rest ->
-      iter rest (hd <-> sep <-> result)
+      iter rest (result <-> sep <-> hd)
   in
-  iter docs Nil
+  match docs with
+  | [] -> Nil
+  | [hd] -> hd
+  | fst :: snd :: rest ->
+    iter rest (fst <-> sep <-> snd)
 
 let rec layout = function
   | Nil -> ""

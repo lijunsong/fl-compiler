@@ -74,53 +74,138 @@ let get_exp_pos = function
   | Let (p, _, _) -> p
   | Arr (p, _, _, _) -> p
 
-let rec exp_to_string e =
-  failwith "AST NYI"
-(*
+let text_enclose name doc =
+  let open Pprint in
+  let s = name ^ "(" in
+  text s <-> nest (String.length s) doc <-> text ")"
+
+let text_comma = Pprint.text ","
+let text_comma_line =
+  let open Pprint in
+  text_comma <-> line
+
+let symbol_to_text s =
+  Pprint.text (Symbol.to_string s)
+
+let rec exp_to_doc e =
   let open Printf in
-  let open PPrint in
-  let pos_str = Pos.to_string (get_exp_pos e) in
+  let open Pprint in
+  (*let pos_str = Pos.to_string (get_exp_pos e) in*)
   match e with
-  | String (_, s) -> text s
+  | String (_, s) -> text ("\"" ^ s ^ "\"")
   | Int (_, i) -> text (string_of_int i)
   | Nil (_) -> text "Nil"
-  | Var (_, var) -> text (var_to_string var)
+  | Var (_, var) -> var_to_doc var
   | Op (_, op, e0, e1) ->
-    text (op_to_string op) <->
-    text (exp_to_string e0) <->
-    text (exp_to_string e1)
+    text_enclose "Op"
+      (concat text_comma_line
+         [op_to_doc op;
+          exp_to_doc e0;
+          exp_to_doc e1])
   | Assign (_, var, e) ->
-    text (var_to_string var) <-> text ":=" <-> (exp_to_string e)
+    text_enclose "Assign" (var_to_doc var
+                           <-> text " := "
+                           <-> exp_to_doc e)
   | Call (_, f, args) ->
-    text (Symbol.to_string f) <->
-    text "(" <->
-    (List.fold_left (<->) Nil (List.map (fun e -> exp_to_tring e) args)) <->
-    text ")"
+    text_enclose "Call" (concat text_comma_line
+                           (text (Symbol.to_string f)
+                            :: List.map exp_to_doc args))
   | Record(_, t, flds) ->
-    sprintf "%s{%s}" (Symbol.to_string t)
-      (String.concat ", "
-         (List.map (fun (_, sym, e) ->
-              sprintf "%s : %s" (Symbol.to_string sym) (exp_to_string e)
-            ) flds))
+    text_enclose "Record" (
+      text (Symbol.to_string t) <-> text ";"
+      <-> line
+      <-> text "["
+      <-> nest 1 (concat text_comma_line
+                    (List.map (fun (_, sym, e) ->
+                         text (Symbol.to_string sym)
+                         <-> text ": " <-> exp_to_doc e)
+                        flds))
+    )
   | Seq (_, es) ->
-    String.concat "; " (List.map exp_to_string es)
+    text_enclose "Seq" (concat text_comma_line (List.map exp_to_doc es))
   | If (_, tst, thn, els) ->
-    let thnpart = sprintf
-        "if (%s) then %s" (exp_to_string tst) (exp_to_string thn) in
+    let thnpart = exp_to_doc tst <-> text_comma_line
+                  <-> exp_to_doc thn in
     let elspart = match els with
-      | None -> ""
-      | Some (e) ->" else " ^ (exp_to_string e) in
-    thnpart ^ elspart
+      | None -> Nil
+      | Some (e) -> line <-> exp_to_doc e in
+    text_enclose "If" (thnpart <-> elspart)
   | While (_, tst, body) ->
-    sprintf "while (%s) begin\n%s\nend"
-      (exp_to_string tst) (exp_to_string body)
+    text_enclose "While"
+      (exp_to_doc tst <-> text_comma_line
+       <-> exp_to_doc body)
   | For (_, var, lo, hi, body) ->
-    let vars = Symbol.to_string var in
-    let los = exp_to_string lo in
-    let his = exp_to_string hi in
-    let bodys = exp_to_string body in
-    sprintf "for (%s=%s; %s<%s; %s:=%s+1) begin\n%s\nend"
-      vars los vars his vars vars bodys
-  | Break _ -> "Break;\n"
-  | _ -> failwith
-*)
+    let vars = text (Symbol.to_string var) in
+    let los = exp_to_doc lo in
+    let his = exp_to_doc hi in
+    let body = exp_to_doc body in
+    text_enclose "For" (concat line [vars; los; his; body])
+  | Break _ -> text "Break"
+  | Let (_, decls, body) ->
+    let decls' = concat line (List.map decl_to_doc decls) in
+    text_enclose "Let" (decls' <-> line <-> exp_to_doc body)
+  | Arr (_, t, sz, init) ->
+    text_enclose "Arr"
+      (symbol_to_text t <-> text_comma_line
+       <-> exp_to_doc sz <-> text_comma_line
+       <-> exp_to_doc init)
+and decl_to_doc d =
+  let open Pprint in
+  match d with
+  | FunctionDecl (decl_list) ->
+    concat line (List.map (fun (_, decl) ->
+        let args = concat text_comma (List.map (fun ft ->
+            fieldTy_to_doc ft) decl.fparams)
+                   |> text_enclose "args" in
+        text_enclose "FunctionDecl"
+          (symbol_to_text decl.funName <-> text_comma_line
+           <-> args <-> text_comma_line
+           <-> exp_to_doc decl.fbody)) decl_list)
+  | VarDecl (_, name, t, init) ->
+    text_enclose "VarDecl"
+      (symbol_to_text name <-> text_comma_line
+       <-> exp_to_doc init)
+  | TypeDecl decls ->
+    concat line (List.map (fun (_, name, t) ->
+        text_enclose "TypeDecl"
+          (symbol_to_text name <-> text_comma_line
+           <-> ty_to_doc t))
+        decls)
+and var_to_doc v =
+  let open Pprint in
+  match v with
+  | VarId (_, s) ->
+    text_enclose "VarId" (symbol_to_text s)
+  | VarField (_, v, s) ->
+    text_enclose "VarField" (var_to_doc v <-> text_comma <-> symbol_to_text s)
+  | VarSubscript (_, v, e) ->
+    text_enclose "VarSubscript" (var_to_doc v <-> text_comma <-> exp_to_doc e)
+
+and op_to_doc o =
+  let open Pprint in
+  match o with
+  | OpPlus -> text "+"
+  | OpMinus -> text "-"
+  | OpTimes -> text "x"
+  | OpDiv -> text "/"
+  | OpEq -> text "=="
+  | OpNeq -> text "!="
+  | OpLt -> text "<"
+  | OpGt -> text ">"
+  | OpLe -> text "<="
+  | OpGe -> text ">="
+and ty_to_doc t =
+  let open Pprint in
+  match t with
+  | NameTy (_, s) -> symbol_to_text s
+  | RecordTy (fd) ->
+    concat text_comma_line (List.map (fun ft -> fieldTy_to_doc ft) fd)
+  | ArrayTy (_, s) -> symbol_to_text s
+and fieldTy_to_doc ft =
+  let open Pprint in
+  text_enclose "fieldTy"
+    (symbol_to_text ft.fldName <-> text_comma_line
+     <-> symbol_to_text ft.ty)
+
+let exp_to_string e =
+  exp_to_doc e |> Pprint.layout
