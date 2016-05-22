@@ -1,9 +1,8 @@
-open Sexplib.Std
 open Symbol
 open Batteries
 
-type label = Symbol.t with sexp
-type temp = int with sexp
+type label = Symbol.t
+type temp = int
 
 let temp_count = ref 0
 let label_count = ref 0

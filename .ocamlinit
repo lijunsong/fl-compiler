@@ -3,4 +3,5 @@
 #directory "_build";;
 #directory "_build/frontend";;
 #directory "_build/backend";;
+#directory "_build/util";;
 open Batteries;;

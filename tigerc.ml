@@ -1,5 +1,4 @@
 module S = Syntax
-open Sexplib
 open Parse
 open Printf
 open Batteries
@@ -43,26 +42,18 @@ let assem_proc_to_string get_register_name (instr_list, fm) =
 
 let print_lang lang =
   let print_ir_list list =
-    List.iter (fun stmt ->
-        let sexp = Ir.sexp_of_stmt stmt in
-        Sexp.output_hum Pervasives.stdout sexp;
-        print_string "\n";
-      ) list
+    List.iter (fun stmt -> print_endline (Ir.stmt_to_string stmt)) list
   in
   let print_string_frags list =
     print_string "strings: \n";
-    List.iter (fun s ->
-        let sexp = Translate.sexp_of_frag s in
-        Sexp.output_hum Pervasives.stdout sexp;
-        print_string "\n";) list
+    List.iter (fun f -> Translate.frag_to_string f |> print_endline) list
   in
   match lang with
   | EMPTY -> failwith "load a tiger program first!"
   | TIGER(t) ->
     print_endline t
   | AST(ast) ->
-    let sexp = S.sexp_of_exp ast in
-    Sexp.output_hum Pervasives.stdout sexp
+    print_endline (S.exp_to_string ast)
   | CANON(proc_list, strs) ->
     print_string "programs:\n";
     List.iter (fun (ir_list, fm) ->
@@ -88,10 +79,7 @@ let print_lang lang =
       ) proc_list;
     print_string_frags strs
   | IR(ir_list) ->
-    List.iter (fun ir ->
-        let sexp = Translate.sexp_of_frag ir in
-        Sexp.output_hum Pervasives.stdout sexp;
-        print_string "\n")
+    List.iter (fun ir -> Translate.frag_to_string ir |> print_endline)
       ir_list
   | ASSEM(proc_list, str_frags) ->
     (* At this stage, only print machine register name when we know it. *)

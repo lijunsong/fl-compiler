@@ -8,9 +8,12 @@ cg_tests = $(shell ls $(TESTDIR)/irgen/*.tig)
 
 BIT=-m32
 
+# install_libs are extracted from tiger.install file
+install_libs = $(shell grep cma tiger.install | sed 's/^.*\/\(.*\)\.cma.*/\1.cma/g')
+
 all:
 	ocamlbuild -use-ocamlfind -yaccflag -v $(TC).byte
-	ocamlbuild -use-ocamlfind -yaccflag -v temp.cma
+	ocamlbuild -use-ocamlfind -yaccflag -v $(install_libs)
 
 clean:
 	ocamlbuild -clean
@@ -31,5 +34,5 @@ testbuild: all
 testcg:
 	for t in $(cg_tests); do \
 	f=$${t%.tig}.out; \
-	gcc -o $$f $(BIT) util/runtime.c $${t%.tig}.s 2>/dev/null && ./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
+	gcc -o $$f $(BIT) runtime/runtime.c $${t%.tig}.s 2>/dev/null && ./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
 	done

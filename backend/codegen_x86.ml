@@ -133,7 +133,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
            here. But this t represents the result of the call, and
            will be used by others. So generate an extra call move
            from eax to t. *)
-        emit(OP("call " ^ (Temp.label_to_string l), [F.rv], [], None));
+        emit(OP("call " ^ (assembly_label_string l), [F.rv], [], None));
         emit(MOVE("mov 's0, 'd0", t, F.rv));
         (* unwind the stack *)
         let arg_n = List.length args in

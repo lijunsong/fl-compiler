@@ -3,11 +3,8 @@ name: "tiger"
 version: "0.1"
 maintainer: "lijunsong <ljs.darkfish@gmail.com>"
 authors: "lijunsong <ljs.darkfish@gmail.com>"
-dev-repo: "file:///Users/ljs/workspace/tiger"
 build: [
   [make]
 ]
 remove: ["ocamlfind" "remove" "tiger"]
-depends: [
-  "ocamlfind" {build}
-]
+depends: [ "ocamlfind" "ounit" "batteries"]

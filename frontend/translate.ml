@@ -1,5 +1,3 @@
-open Sexplib.Std
-open Sexplib
 open Symbol
 open X86
 open Batteries
@@ -27,20 +25,22 @@ module F = X86Frame
 
 *)
 
-type level = { parent : level option; frame : F.frame; cmp : int } with sexp
+type level = { parent : level option; frame : F.frame; cmp : int }
 (** level is a wrapper of Frame with additional _static_ scope
  * information *)
 
-type access = level * F.access with sexp
+type access = level * F.access
 (** access is a wrapper to Frame.access with additional level
  * information *)
 
 type exp =
   | Ex of Ir.exp
   | Nx of Ir.stmt
-  | Cx of (Temp.label -> Temp.label -> Ir.stmt) with sexp
+  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-type frag = F.frag with sexp
+type frag = F.frag
+
+let frag_to_string = F.frag_to_string
 
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 
@@ -57,9 +57,7 @@ let make_fi_label () = Temp.new_label ~prefix:"fi" ()
 let debug_print () =
   print_endline "== debug Translate Fragment ==";
   print_endline ("total fragments: " ^ (string_of_int (List.length !frag_list)));
-  List.iter (fun frag ->
-      Sexp.output_hum Pervasives.stdout (F.sexp_of_frag frag);
-      print_endline "")
+  List.iter (fun frag -> frag_to_string frag |> print_endline)
     !frag_list;
   print_endline "== debug end =="
 

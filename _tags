@@ -1,4 +1,3 @@
 <util> or <frontend> or <backend> or <tests>: include
-true: package(batteries), package(oUnit), package(sexplib), package(pa_sexp_conv)
-true: syntax(camlp4o)
+true: package(batteries), package(oUnit)
 true: debug
