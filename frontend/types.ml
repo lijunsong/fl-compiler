@@ -1,5 +1,16 @@
-open Symbol
-open Translate
+(**
+   This file implements type environment and value environment of type checking.
+
+   Tiger has two namespaces. One for type identifiers, like int, string.
+   Another one is for value, like variables and functions.
+
+   Separating the two environments allows an identifier to be used as a
+   type id as well as a variable or a function name at the same time.
+
+   Type information is only used during type checking. Translating AST
+   to IR doesn't need type information.
+*)
+
 open Batteries
 
 (** uniq is to differentiate records (and arrays) that have similar
@@ -18,24 +29,33 @@ end = struct
 end
 
 (* TODO: explain the necessary to have NIL and UNIT both as a type. *)
-type t =
+type ty =
   | INT
   | STRING
-  | RECORD of (Symbol.t * t) list * Uniq.t
-  | ARRAY of t * Uniq.t
+  | RECORD of (Symbol.t * ty) list * Uniq.t
+  | ARRAY of ty * Uniq.t
   | NIL      (* NIL is normally used as the type of nil, as var a : record = nil *)
   | UNIT     (* UNIT is the type of an empty sequence. *)
-  | NAME of Symbol.t * t option ref
+  | NAME of Symbol.t * ty option ref
 
-type typ =
-  | VarType of Translate.access * t
+let rec record_find (lst : (Symbol.t * ty) list) (sym : Symbol.t) : ty option =
+  match lst with
+  | [] -> None
+  | (sym', t) :: tl ->
+     if sym' = sym then Some(t)
+     else record_find tl sym
+
+(** [t] models the type of variables and functions. *)
+type val_ty =
+  | VarType of Translate.access * ty
   (** Var access * Var Type *)
 
-  | FuncType of Translate.level * t list * t
+  | FuncType of Translate.level * ty list * ty
   (** function's  FunctionOwnLevel * argumentTypes * returnType
       NOTE: each level has already associated a label *)
 
-let t_to_string = function
+
+let ty_to_string = function
   | INT -> "int"
   | STRING -> "string"
   | RECORD _ -> "record"
@@ -44,58 +64,6 @@ let t_to_string = function
   | UNIT -> "unit"
   | NAME (s, _)-> Symbol.to_string s
 
-let typ_to_string = function
-  | VarType (_, t) -> t_to_string t
-  | FuncType (l, _, _) -> "function" ^ (Translate.get_label l |> Temp.label_to_string )
-
-let rec record_find (lst : (Symbol.t * t) list) (sym : Symbol.t) : t option =
-  match lst with
-  | [] -> None
-  | (sym', t) :: tl ->
-     if sym' = sym then Some(t)
-     else record_find tl sym
-
-(** typeEnv stores type-id -> type *)
-type typeEnv = t SymbolTable.t
-
-(** valEnv stores identifier -> type *)
-type valEnv = typ SymbolTable.t
-
-(** typeEnv includes predefined types: int string *)
-let typeEnv : typeEnv =
-  let predefined = [("int", INT); ("string", STRING)] in
-  List.fold_right (fun (s, t) table ->
-      SymbolTable.enter (Symbol.of_string s) t table)
-                  predefined SymbolTable.empty
-
-(** valEnv predefines built-in functions. *)
-let valEnv : valEnv =
-  ["print", [STRING], UNIT;
-   "getchar", [], STRING;
-   "ord", [STRING], INT;
-   "chr", [INT], STRING;
-   "size", [STRING], INT;
-   "substring", [STRING; INT; INT], STRING;
-   "concat", [STRING; STRING], STRING;
-   "not", [INT], INT;
-   "exit", [INT], UNIT;
-   "assert", [INT], UNIT;
-  ]
-  |> List.map (fun (n,arg_t,ret_t) ->
-      let formals = List.make (List.length arg_t) true in
-      let lev = Translate.new_level ~add_static_link:false
-          Translate.outermost (Temp.named_label n) formals in
-      n, FuncType (lev, arg_t, ret_t))
-  |> List.map (fun (n,t) -> Symbol.of_string n, t)
-  |> List.enum
-  |> SymbolTable.of_enum
-
-(** TODO: make SymbolTable a functor, typeEnv/valEnv submodule and
- * debug_print automatically works. *)
-let debug_typeEnv (env : typeEnv) =
-  Printf.printf "--- typeEnv ---\n";
-  SymbolTable.debug_print t_to_string env
-
-let debug_valEnv (env : valEnv) =
-  Printf.printf "--- valEnv ---\n";
-  SymbolTable.debug_print typ_to_string env
+let val_ty_to_string = function
+  | VarType (_, t) -> ty_to_string t
+  | FuncType (_, argty, ret) -> "Function"
