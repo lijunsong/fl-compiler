@@ -1,10 +1,16 @@
-(**
-   This file sets up initial type environment and value environment.
+(** This file implements type environment and value environment for
+    type checking.
 
-   Environment is used only in type checking.
+    Separating the two environments allows an identifier to be used as a
+    type id as well as a variable or a function name at the same time.
+
+    This file sets up initial type environment and value environment.
+
+    Environment is used only in type checking.
 *)
 
 open Types
+open Batteries
 
 module SymbolTable = Symbol.SymbolTable
 
@@ -15,7 +21,8 @@ let prelude_type =
     ("string", STRING);
   ]
 
-(** built-in function ids *)
+(** built-in function ids. each tuple is (function name, arg type,
+    return type) *)
 let prelude_val =
   [
     "print", [STRING], UNIT;
@@ -36,6 +43,18 @@ type value_env = val_ty SymbolTable.t
 type type_env = ty SymbolTable.t
 (** type_env maps type id to types *)
 
-let init_value_env = SymbolTable.empty
+(** initial value environment *)
+let init_value_env =
+  List.map (fun (name, args_ty, ret_ty) ->
+      (* pass all args on stack*)
+      let formals = List.make (List.length args_ty) true in
+      let level = Translate.new_level ~add_static_link:false
+          Translate.outermost (Temp.named_label name) formals in
+      Symbol.of_string name, FuncType(level, args_ty, ret_ty)
+    ) prelude_val
+  |> SymbolTable.of_list
 
-let init_type_env = SymbolTable.empty
+(** initial type environment *)
+let init_type_env =
+  List.map (fun (name, ty) -> Symbol.of_string name, ty) prelude_type
+  |> SymbolTable.of_list

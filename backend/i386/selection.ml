@@ -1,8 +1,6 @@
 open Batteries
 open Assem
 
-module F = Translate.F
-
 let instr_list : instr list ref = ref []
 
 let sprintf = Printf.sprintf
@@ -91,9 +89,9 @@ let relop_to_instr = function
 (**/ the following describe registers *)
 
 (** registers to which a call replaces its results *)
-let eax = F.get_temp "%eax"
+let eax = Arch.get_temp "%eax"
 let call_write_regs = [eax]
-let sp = F.get_temp "%esp"
+let sp = Arch.get_temp "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
   emit_comment_exp exp;
@@ -133,12 +131,12 @@ let rec munch_exp (exp : Ir.exp) : temp =
            here. But this t represents the result of the call, and
            will be used by others. So generate an extra call move
            from eax to t. *)
-        emit(OP("call " ^ (assembly_label_string l), [F.rv], [], None));
-        emit(MOVE("mov 's0, 'd0", t, F.rv));
+        emit(OP("call " ^ (assembly_label_string l), [Arch.rv], [], None));
+        emit(MOVE("mov 's0, 'd0", t, Arch.rv));
         (* unwind the stack *)
         let arg_n = List.length args in
         if arg_n <> 0 then
-          emit(OP(sprintf "add $%d, 's0" (arg_n * F.word_size), [sp], [sp], None)))
+          emit(OP(sprintf "add $%d, 's0" (arg_n * Arch.word_size), [sp], [sp], None)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n))) ->
     result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
   | Ir.MEM (e) ->
@@ -225,7 +223,7 @@ let codegen_data frags =
     match frags with
     | [] -> str_list
     | (l, s) :: rest ->
-      F.string l s :: gen_iter rest str_list
+      Arch.string l s :: gen_iter rest str_list
   in
   (* generate data section content *)
   let data = gen_iter frags [] |> String.concat "\n" in

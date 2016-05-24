@@ -9,11 +9,11 @@ type basicblocks = Ir.stmt list list
 
 type string_frags = Translate.frag list
 
-type linear_proc = linear * Translate.F.frame
+type linear_proc = linear * Arch.frame
 
-type bb_proc = linear list * Temp.label * Translate.F.frame
+type bb_proc = linear list * Temp.label * Arch.frame
 
-type assem_proc = Assem.instr list * Translate.F.frame
+type assem_proc = Assem.instr list * Arch.frame
 
 type lang =
   | TIGER of string
@@ -36,8 +36,8 @@ let program = ref EMPTY
 
 let assem_proc_to_string get_register_name (instr_list, fm) =
   let body = List.map (fun instr ->
-      Codegen_x86.format get_register_name instr) instr_list in
-  let all = Translate.F.proc_entry_exit3 fm body in
+      Selection.format get_register_name instr) instr_list in
+  let all = Arch.proc_entry_exit3 fm body in
   all
 
 let print_lang lang =
@@ -59,12 +59,12 @@ let print_lang lang =
     List.iter (fun (ir_list, fm) ->
         print_ir_list ir_list;
         print_string "frames: \n";
-        Translate.F.debug_dump fm) proc_list;
+        Arch.debug_dump fm) proc_list;
     print_string_frags strs
 
   | BLOCKS(bb_proc_list, label) ->
     List.iter (fun (bb,l,fm) ->
-        Translate.F.debug_dump fm;
+        Arch.debug_dump fm;
         print_string ("label: " ^ (Temp.label_to_string l) ^ "\n");
         List.iter (fun lst ->
             print_string "block:\n";
@@ -73,7 +73,7 @@ let print_lang lang =
   | TRACE(proc_list, strs) ->
     List.iter (fun (ir_list, fm) ->
         print_endline "----- frame -----";
-        Translate.F.debug_dump fm;
+        Arch.debug_dump fm;
         print_ir_list ir_list;
         print_endline "----- frame end -----"
       ) proc_list;
@@ -83,7 +83,7 @@ let print_lang lang =
       ir_list
   | ASSEM(proc_list, str_frags) ->
     (* At this stage, only print machine register name when we know it. *)
-    let get_register_name t = match Translate.F.get_register_name t with
+    let get_register_name t = match Arch.get_register_name t with
       | None -> Temp.temp_to_string t
       | Some (reg) -> reg
     in
@@ -119,9 +119,9 @@ let print_lang lang =
     let () = print_endline str in
     (* emit the string *)
     let frags = List.map (fun frag -> match frag with
-        | Translate.F.PROC(_) -> failwith "proc found in string frags."
-        | Translate.F.STRING(l, s) -> (l, s)) str_frags in
-    let data = Codegen_x86.codegen_data frags in
+        | Arch.PROC(_) -> failwith "proc found in string frags."
+        | Arch.STRING(l, s) -> (l, s)) str_frags in
+    let data = Selection.codegen_data frags in
     print_endline data
 
 
@@ -170,12 +170,12 @@ let to_canon () =
   | IR(frags) ->
     let progs, strs = List.partition
         (fun frag -> match frag with
-           | Translate.F.PROC (_) -> true
+           | Arch.PROC (_) -> true
            | _ -> false) frags in
     let canon =
       List.map (fun frag -> match frag with
-          | Translate.F.PROC (ir, fm) -> Canon.linearize ir, fm
-          | Translate.F.STRING (_) -> failwith "unreachable"
+          | Arch.PROC (ir, fm) -> Canon.linearize ir, fm
+          | Arch.STRING (_) -> failwith "unreachable"
         ) progs in
     program := CANON(canon, strs)
   | _ -> failwith "Can't convert to Cannonical IR"
@@ -206,7 +206,7 @@ let to_assem () =
   | TRACE (procs, str_frags) ->
     let res = List.map (fun (ir, frame) ->
         let seq = Ir.seq ir in
-        Codegen_x86.codegen frame seq, frame) procs in
+        Selection.codegen frame seq, frame) procs in
     program := ASSEM(res, str_frags);
   | _ -> failwith "Can't convert to assemly"
 

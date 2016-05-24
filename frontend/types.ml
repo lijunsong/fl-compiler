@@ -1,11 +1,6 @@
 (**
-   This file implements type environment and value environment of type checking.
-
    Tiger has two namespaces. One for type identifiers, like int, string.
    Another one is for value, like variables and functions.
-
-   Separating the two environments allows an identifier to be used as a
-   type id as well as a variable or a function name at the same time.
 
    Type information is only used during type checking. Translating AST
    to IR doesn't need type information.

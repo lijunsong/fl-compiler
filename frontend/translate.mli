@@ -1,29 +1,27 @@
 open Symbol
-open X86
 
-(** This module translates Syntax to Ir.
- *
- * For the toplevel and each function, the translation arranges local
- * variables and produces Ir for each expression. It also remembers
- * all string literals and declared functions.
- *)
 
-(** TODO: make translate a functor taking Frame as input module *)
+(** Translate is the bridge of the frontend and the backend: it
+    translates Syntax to Ir.
 
-module F = X86Frame
+    Given different targets, Translate is supposed to generate
+    different IR, so Translate is implmeneted as a functor.
 
+    For the toplevel and each function, the translation arranges local
+    variables and produces Ir for each expression. It also remembers
+    all string literals and declared functions.
+*)
+
+
+type level
 (** Each nested function declared in Tiger's [let] is in a deeper
     level *)
-type level
 
 type access
 
-type exp =
-  | Ex of Ir.exp
-  | Nx of Ir.stmt
-  | Cx of (Temp.label -> Temp.label -> Ir.stmt)
+type exp
 
-type frag = F.frag
+type frag = Arch.frag
 
 val frag_to_string: frag -> string
 
@@ -44,7 +42,7 @@ val get_formals : level -> access list
 val get_label : level -> Temp.label
 
 (** [alloc_local level escape] allocate a local variable on [level]
-  with [escape] indicating whether the variable escapes. *)
+    with [escape] indicating whether the variable escapes. *)
 val alloc_local : level -> bool -> access
 
 val debug_print : unit -> unit
@@ -57,14 +55,14 @@ val const : int -> exp
 val string : string -> exp
 
 (** [simple_var acc use_level] given the access of a variable and
-where it is using, return an Ir of var's variable location *)
+    where it is using, return an Ir of var's variable location *)
 val simple_var : access -> level -> exp
 
 
 (** [var_field base fld fld_list] given the expression of base
-location of the struct, the fld symbol and a symbol list, return an exp
-option that calculates the fld location, and the associated value of
-that field. None if the fld is not found *)
+    location of the struct, the fld symbol and a symbol list, return an exp
+    option that calculates the fld location, and the associated value of
+    that field. None if the fld is not found *)
 val var_field : exp -> Symbol.t -> (Symbol.t * 'a) list -> (exp * 'a) option
 
 (** [var_subscript base index] returns the location of that index. *)

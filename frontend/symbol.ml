@@ -39,4 +39,8 @@ struct
   let look x m =
     if mem x m then Some (find x m)
     else None
+
+  let of_list lst =
+    List.enum lst
+    |> of_enum
 end

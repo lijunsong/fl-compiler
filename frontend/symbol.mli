@@ -19,4 +19,6 @@ module SymbolTable : sig
   include (Map.S with type key = t)
 
   val look : key -> 'a t -> 'a option
+
+  val of_list : (key * 'a) list -> 'a t
 end

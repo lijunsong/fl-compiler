@@ -1,10 +1,7 @@
 open Symbol
-open X86
 open Batteries
 
-module F = X86Frame
-
-(** Notes on static link: static link (sl) is added during the
+(* Notes on static link: static link (sl) is added during the
     translation.
 
     Functions level stored in environment will include the static link
@@ -25,11 +22,15 @@ module F = X86Frame
 
 *)
 
-type level = { parent : level option; frame : F.frame; cmp : int }
+type level = {
+  parent : level option;
+  frame : Arch.frame;
+  cmp : int
+}
 (** level is a wrapper of Frame with additional _static_ scope
  * information *)
 
-type access = level * F.access
+type access = level * Arch.access
 (** access is a wrapper to Frame.access with additional level
  * information *)
 
@@ -38,9 +39,9 @@ type exp =
   | Nx of Ir.stmt
   | Cx of (Temp.label -> Temp.label -> Ir.stmt)
 
-type frag = F.frag
+type frag = Arch.frag
 
-let frag_to_string = F.frag_to_string
+let frag_to_string = Arch.frag_to_string
 
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 
@@ -48,7 +49,7 @@ let compare (a : level) (b : level) = compare a.cmp b.cmp
 let uniq = ref 0
 
 (** frag_list stores seen functions and string literals *)
-let frag_list : F.frag list ref = ref []
+let frag_list : Arch.frag list ref = ref []
 
 let make_true_label () = Temp.new_label ~prefix:"true" ()
 let make_false_label () = Temp.new_label ~prefix:"false" ()
@@ -66,15 +67,15 @@ let rec unEx (exp : exp) : Ir.exp = match exp with
   | Ex (e) -> e
   | Nx (stmt) -> Ir.ESEQ(stmt, Ir.CONST(0))
   | Cx (genjump) ->
-     let label_t  = make_true_label () in
-     let label_f =  make_false_label () in
-     let res = Ir.TEMP (Temp.new_temp()) in
-     Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, Ir.CONST(1)),
-                    Ir.SEQ(genjump label_t label_f,
-                           Ir.SEQ(Ir.LABEL(label_f),
-                                  Ir.SEQ(Ir.MOVE(res, Ir.CONST(0)),
-                                         Ir.LABEL(label_t))))),
-             res)
+    let label_t  = make_true_label () in
+    let label_f =  make_false_label () in
+    let res = Ir.TEMP (Temp.new_temp()) in
+    Ir.ESEQ(Ir.SEQ(Ir.MOVE(res, Ir.CONST(1)),
+                   Ir.SEQ(genjump label_t label_f,
+                          Ir.SEQ(Ir.LABEL(label_f),
+                                 Ir.SEQ(Ir.MOVE(res, Ir.CONST(0)),
+                                        Ir.LABEL(label_t))))),
+            res)
 
 (** To use an IR as an Nx, call this function *)
 let unNx = function
@@ -84,8 +85,8 @@ let unNx = function
       | _ -> Ir.EXP(e)
     end
   | Cx (genjump) ->
-     let label_t, label_f = make_true_label(), make_false_label() in
-     genjump label_t label_f
+    let label_t, label_f = make_true_label(), make_false_label() in
+    genjump label_t label_f
 
 (** To use an IR as a Cx, call this function *)
 let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
@@ -95,7 +96,7 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
-                  frame = F.new_frame (Temp.named_label "tigermain") [];
+                  frame = Arch.new_frame (Temp.named_label "tigermain") [];
                   cmp = !uniq
                 }
 
@@ -104,35 +105,35 @@ let outermost = { parent = None;
     external function must confine to C lang's calling convention, so
     a new_level must not implicitly add a static link; while tiger's
     function will always accept an extra static link. *)
-let new_level ?(add_static_link=true) parent label formals : level =
+let new_level ?add_static_link:(add=true) parent label formals : level =
   (* add static link *)
-  let fm = if add_static_link then
-      F.new_frame label (true :: formals)
+  let fm = if add then
+      Arch.new_frame label (true :: formals)
     else
-      F.new_frame label formals
+      Arch.new_frame label formals
   in
   incr uniq;
   { parent = Some parent; frame = fm; cmp = !uniq }
 
 (** get_formals will return the formal arguments of a
-  function. (static link is implemented as an argument but not
-  included.)*)
+    function. (static link is implemented as an argument but not
+    included.)*)
 let get_formals level : access list =
-  let fm_formals = F.get_formals level.frame in
+  let fm_formals = Arch.get_formals level.frame in
   match List.map (fun f -> level, f) fm_formals with
   | [] -> failwith "A level's formals cannot be empty list"
   | hd :: tl -> tl
 
 let get_label level =
-  F.get_name level.frame
+  Arch.get_name level.frame
 
 let alloc_local level escape : access =
   let fm = level.frame in
-  let fm_access = F.alloc_local fm escape in
+  let fm_access = Arch.alloc_local fm escape in
   level, fm_access
 
-let get_static_link level : F.access =
-  let fm_formals = F.get_formals level.frame in
+let get_static_link level : Arch.access =
+  let fm_formals = Arch.get_formals level.frame in
   List.hd fm_formals
 
 (** This function add label to the given [stmt]*)
@@ -147,7 +148,7 @@ let const (i : int) : exp = Ex(Ir.CONST(i))
 (** this function has side effect. It modifies the global variable frag_list *)
 let string (s : string) : exp =
   let label = Temp.new_label ~prefix:"str" () in
-  let frag = F.STRING(label, s) in
+  let frag = Arch.STRING(label, s) in
   frag_list := frag :: !frag_list;
   Ex(Ir.NAME(label))
 
@@ -176,38 +177,38 @@ let simple_var (acc : access) (use_level : level) : exp =
      expression that describes fp from use_level to check_level. *)
   let rec get_var (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if check_level = def_level then
-      let ir = F.get_exp fp_exp fm_acc in
+      let ir = Arch.get_exp fp_exp fm_acc in
       ir
-  else
-    match check_level.parent with
-    | None -> failwith "Undefined Variable. Type Checker has bugs."
-    | Some (parent) ->
-      (* get static link *)
-      let sl : F.access = get_static_link check_level in
-      (* follow up to find the def_level *)
-      let fp_exp' = F.get_exp fp_exp sl in
-      get_var parent fp_exp'
+    else
+      match check_level.parent with
+      | None -> failwith "Undefined Variable. Type Checker has bugs."
+      | Some (parent) ->
+        (* get static link *)
+        let sl : Arch.access = get_static_link check_level in
+        (* follow up to find the def_level *)
+        let fp_exp' = Arch.get_exp fp_exp sl in
+        get_var parent fp_exp'
   in
-  Ex(get_var use_level (Ir.TEMP(F.fp)))
+  Ex(get_var use_level (Ir.TEMP(Arch.fp)))
 
 let var_field (exp : exp) (fld : Symbol.t) fld_list : (exp * 'a) option =
   let rec find_rec fld fld_lst offset = match fld_lst with
     | [] -> None, offset
     | (sym, t) :: tl ->
-       if sym = fld then
-         Some (sym, t), offset
-       else
-         find_rec fld tl (offset + F.word_size)
+      if sym = fld then
+        Some (sym, t), offset
+      else
+        find_rec fld tl (offset + Arch.word_size)
   in
   match find_rec fld fld_list 0 with
   | None, _ -> None
   | Some (sym, t), offset ->
-     let ir = Ir.MEM(Ir.BINOP(Ir.PLUS, unEx exp, Ir.CONST(offset))) in
-     Some (Ex(ir), t)
+    let ir = Ir.MEM(Ir.BINOP(Ir.PLUS, unEx exp, Ir.CONST(offset))) in
+    Some (Ex(ir), t)
 
 
 let var_subscript base idx : exp =
-  let idx' = Ir.BINOP(Ir.MUL, unEx idx, Ir.CONST(F.word_size)) in
+  let idx' = Ir.BINOP(Ir.MUL, unEx idx, Ir.CONST(Arch.word_size)) in
   Ex(Ir.MEM(Ir.BINOP(Ir.PLUS, unEx base, idx')))
 
 let binop op operand1 operand2 =
@@ -286,25 +287,25 @@ let rec get_enclosing_level_fp def_level use_level : exp =
 
   let rec get_fp (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if def_level = check_level then
-      let sl : F.access = get_static_link check_level in
-      F.get_exp fp_exp sl
-  else
-    match def_level.parent, check_level.parent with
-    | Some (def_parent), _ when def_parent = check_level ->
-      fp_exp
-    | Some (def_parent), Some (check_parent) ->
-      let sl : F.access = get_static_link check_level in
-      let fp_exp' = F.get_exp fp_exp sl in
-      get_fp  check_parent fp_exp'
-    | _ -> failwith "static link not found"
+      let sl : Arch.access = get_static_link check_level in
+      Arch.get_exp fp_exp sl
+    else
+      match def_level.parent, check_level.parent with
+      | Some (def_parent), _ when def_parent = check_level ->
+        fp_exp
+      | Some (def_parent), Some (check_parent) ->
+        let sl : Arch.access = get_static_link check_level in
+        let fp_exp' = Arch.get_exp fp_exp sl in
+        get_fp  check_parent fp_exp'
+      | _ -> failwith "static link not found"
   in
-  Ex(get_fp use_level (Ir.TEMP(F.fp)))
+  Ex(get_fp use_level (Ir.TEMP(Arch.fp)))
 
 
 (** def_level is the callee's own level. use_level is calling
     function's level. call will calculate the static link. *)
 let call def_level use_level args : exp =
-  let label = F.get_name def_level.frame in
+  let label = Arch.get_name def_level.frame in
   let args_ir = List.map (fun arg -> unEx arg) args in
   if List.length (get_formals def_level) = List.length args_ir then
     (* This is a tiger function *)
@@ -324,17 +325,17 @@ let record (fields : exp list) =
     List.mapi (fun i e ->
         let v = unEx e in
         Ir.MOVE(Ir.MEM(Ir.BINOP(Ir.PLUS,
-                                Ir.CONST(i * F.word_size),
+                                Ir.CONST(i * Arch.word_size),
                                 temp)),
                 v)
       ) fields in
   let init_ir_stmt = Ir.seq init_ir_stmts in
-  let alloca = Ir.MOVE(temp, F.external_call "malloc" [Ir.CONST(F.word_size * n)]) in
+  let alloca = Ir.MOVE(temp, Arch.external_call "malloc" [Ir.CONST(Arch.word_size * n)]) in
   Ex(Ir.ESEQ(Ir.SEQ(alloca, init_ir_stmt),
              temp))
 
 let array (n : exp) (init : exp) : exp =
-  let ir = F.external_call "initArray" [unEx n; unEx init] in
+  let ir = Arch.external_call "initArray" [unEx n; unEx init] in
   Ex(ir)
 
 (** construct Ir.SEQ from the given list except for the last one.
@@ -355,9 +356,9 @@ let seq (exp_list :  (exp * 'a) list) : exp * 'a =
       reduce (Nx ir, prev_t (*prev_t will be discarded*)) hd tl
   in
   match exp_list with
-    | [] -> failwith "Translate.seq takes at least one argument"
-    | hd :: [] -> hd
-    | hd0 :: hd1 :: tl  -> reduce hd0 hd1 tl
+  | [] -> failwith "Translate.seq takes at least one argument"
+  | hd :: [] -> hd
+  | hd0 :: hd1 :: tl  -> reduce hd0 hd1 tl
 
 let if_cond_unit_body tst thn (els : exp option) : exp =
   let label_t = make_true_label () in
@@ -369,15 +370,15 @@ let if_cond_unit_body tst thn (els : exp option) : exp =
     |> wrap_label label_t in
   let res = match els with
     | None ->
-       Ir.SEQ(tst_ir,
-              Ir.SEQ(true_part,
-                     Ir.SEQ(Ir.LABEL(label_f), Ir.LABEL(label_fi))))
+      Ir.SEQ(tst_ir,
+             Ir.SEQ(true_part,
+                    Ir.SEQ(Ir.LABEL(label_f), Ir.LABEL(label_fi))))
     | Some (e) ->
-       let els_ir = unNx e in
-       Ir.SEQ(tst_ir,
-              Ir.SEQ(true_part,
-                     Ir.SEQ(wrap_label label_f els_ir,
-                            Ir.LABEL(label_fi)))) in
+      let els_ir = unNx e in
+      Ir.SEQ(tst_ir,
+             Ir.SEQ(true_part,
+                    Ir.SEQ(wrap_label label_f els_ir,
+                           Ir.LABEL(label_fi)))) in
   Nx(res)
 
 let if_cond_nonunit_body tst thn (els : exp option) : exp =
@@ -396,10 +397,10 @@ let if_cond_nonunit_body tst thn (els : exp option) : exp =
     | Some (e) ->
       let els_part = Ir.MOVE(Ir.TEMP(temp), unEx e)
                      |> wrap_label label_f in
-       Ir.ESEQ(Ir.SEQ(tst_ir,
-                      Ir.SEQ(true_part,
-                             Ir.SEQ(els_part, Ir.LABEL(label_fi)))),
-               Ir.TEMP(temp))in
+      Ir.ESEQ(Ir.SEQ(tst_ir,
+                     Ir.SEQ(true_part,
+                            Ir.SEQ(els_part, Ir.LABEL(label_fi)))),
+              Ir.TEMP(temp))in
   Ex(res)
 
 (**
@@ -407,7 +408,7 @@ let if_cond_nonunit_body tst thn (els : exp option) : exp =
  * if tst then
  *   (body; jump tst_label)
  * done_label:
- *)
+*)
 let while_loop tst body label_done: exp =
   let label_tst = Temp.new_label ~prefix:"while_test" () in
   let label_body = Temp.new_label ~prefix:"while_body" () in
@@ -431,12 +432,12 @@ let proc_entry_exit ?(is_procedure=false) level fbody : unit =
      returning value. *)
   let body = if is_procedure then
       Ir.SEQ(unNx fbody,
-             Ir.MOVE(Ir.TEMP(F.rv), Ir.CONST(0)))
+             Ir.MOVE(Ir.TEMP(Arch.rv), Ir.CONST(0)))
     else
-      Ir.MOVE(Ir.TEMP(F.rv), unEx fbody) in
+      Ir.MOVE(Ir.TEMP(Arch.rv), unEx fbody) in
   (* do view shift *)
-  let stmt = F.proc_entry_exit1 fm body in
-  frag_list := F.PROC(stmt, fm) :: !frag_list
+  let stmt = Arch.proc_entry_exit1 fm body in
+  frag_list := Arch.PROC(stmt, fm) :: !frag_list
 
 let get_result () : frag list =
   !frag_list
