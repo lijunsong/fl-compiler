@@ -13,7 +13,6 @@ type frame = {
   mutable locals : access list;
 }
 
-
 type frag =
   | PROC of Ir.stmt * frame
   | STRING of Temp.label * string
