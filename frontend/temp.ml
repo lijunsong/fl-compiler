@@ -1,4 +1,3 @@
-open Symbol
 open Batteries
 
 type label = Symbol.t

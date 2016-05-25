@@ -3,12 +3,13 @@
 open Symbol
 open Batteries
 
-(** abstract names for static memory location *)
 type label
+(** abstract names for static memory location *)
 
-(** a value temporarly held in registers, which we assumed to be
-  infinite *)
+
 type temp
+(** a value temporarly held in registers. We assume that we have
+    infinite number of registers *)
 
 val new_temp : unit -> temp
 
@@ -18,9 +19,9 @@ val new_label : ?prefix:string -> unit -> label
 
 val label_to_string : label -> string
 
-(** Returns a new label whose assembly language name is the given
-  string *)
 val named_label : string -> label
+(** Returns a new label whose assembly language name is the given
+    string. This is useful for debugging *)
 
 module LabelMap : BatMap.S with type key = label
 

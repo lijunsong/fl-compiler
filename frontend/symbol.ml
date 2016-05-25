@@ -7,61 +7,40 @@
 
 open Batteries
 
-module Symbol : sig
-  type t
-  val compare : t -> t -> int
-  val of_string : string -> t
-  val to_string : t -> string
-end =
+module Symbol =
 struct
-  type t = string * int
+    type t = string * int
 
-  let compare ((_, i1) : t) ((_, i2) : t) = compare i1 i2
+    let compare ((_, i1) : t) ((_, i2) : t) = compare i1 i2
 
-  let map : (string, int) Hashtbl.t = Hashtbl.create(100)
+    let map : (string, int) Hashtbl.t = Hashtbl.create(100)
 
-  let next_sym = ref 0
+    let next_sym = ref 0
 
-  let of_string (s : string) : t=
-    match Hashtbl.find_option map s with
-    | Some (i) -> s, i
-    | None -> begin
-        let i = !next_sym in
-        Hashtbl.add map s i;
-        incr next_sym;
-        (s, i)
-      end
+    let of_string (s : string) : t=
+      match Hashtbl.find_option map s with
+      | Some (i) -> s, i
+      | None -> begin
+          let i = !next_sym in
+          Hashtbl.add map s i;
+          incr next_sym;
+          (s, i)
+        end
 
-  let to_string ((s, _) : t) = s
-end
+    let to_string ((s, _) : t) = s
+  end
 
+include Symbol
 
-module SymbolTable : sig
-  type 'a t
-  val empty : 'a t
-  val enter : Symbol.t -> 'a -> 'a t -> 'a t
-  val look : Symbol.t -> 'a t -> 'a option
-  val of_enum : (Symbol.t * 'a) Enum.t -> 'a t
-  val debug_print : ('a -> string) -> 'a t -> unit
-end =
+module SymbolTable =
 struct
-  module Table = Map.Make(Symbol)
+  include Map.Make(Symbol)
 
-  type 'a t = 'a Table.t
-
-  let empty = Table.empty
-
-  let enter sym v table =
-    Table.add sym v table
-
-  let look sym table =
-    if Table.mem sym table then
-      Some (Table.find sym table)
+  let look x m =
+    if mem x m then Some (find x m)
     else None
 
-  let of_enum enum = Table.of_enum enum
-
-  let debug_print (f : 'a -> string) table =
-    Table.iter (fun k v ->
-        Printf.printf "%s\n\t=> %s\n" (Symbol.to_string k) (f v)) table
+  let of_list lst =
+    List.enum lst
+    |> of_enum
 end

@@ -1,7 +1,8 @@
 module S = Syntax
 open Printf
-open Symbol
 open Batteries
+open Types
+open Env
 
 (** Type Chcker
 
@@ -32,7 +33,7 @@ open Batteries
 
  **)
 
-type expty = Translate.exp * Types.t
+type expty = Translate.exp * ty
 
 exception InternalError of string
 (** [msg] InternalError *)
@@ -46,16 +47,18 @@ exception UndefinedError of Pos.t * string
 let raise_undef pos (sym : Symbol.t) =
   raise (UndefinedError(pos, "Undefined " ^ (Symbol.to_string sym)))
 
-let expect_type pos (expect : string) (actual : Types.t) =
-  raise (TypeError(pos, "Expected type " ^ expect ^ " but got " ^ (Types.t_to_string actual)))
+let expect_type pos (expect : string) (actual : ty) =
+  raise (TypeError(pos, "Expected type " ^ expect
+                        ^ " but got " ^ (Types.ty_to_string actual)))
 
-let expect_vtype pos (expect : string) (actual : Types.typ) =
-  raise (TypeError(pos, "Expected type " ^ expect ^ " but got " ^ (Types.typ_to_string actual)))
+let expect_vtype pos (expect : string) (actual : val_ty) =
+  raise (TypeError(pos, "Expected type " ^ expect
+                        ^ " but got " ^ (val_ty_to_string actual)))
 
 (** given a type-id (symbol), get the actual Type or issue an error *)
-let get_type pos (sym : Symbol.t) (tenv : Types.typeEnv) : Types.t =
-  match SymbolTable.look sym tenv with
-  | None -> raise_undef pos sym
+let get_type pos (tyid : Symbol.t) (tenv : type_env) : ty =
+  match SymbolTable.look tyid tenv with
+  | None -> raise_undef pos tyid
   | Some (t) -> t
 
 let trans_binop (op : S.op) : Ir.binop = match op with
@@ -118,10 +121,10 @@ let desugar_forloop (e : S.exp) : S.exp =
 (** [trans_decl curr_level typeenv valenv decls] trans_decl translates
  * Let bindings. It returnes augmented type env, value env and a list
  * of initializations. *)
-let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
-    (venv : Types.valEnv) (decls : S.decl list)
-  : Types.typeEnv * Types.valEnv * Translate.exp list =
-  let trfieldTy (te : Types.typeEnv) fld =
+let rec trans_decl (curr_level : Translate.level) (tenv : type_env)
+    (venv : value_env) (decls : S.decl list)
+  : type_env * value_env * Translate.exp list =
+  let trfieldTy (te : type_env) fld =
     match SymbolTable.look fld.S.ty te with
     | None -> raise_undef fld.S.pos fld.S.ty
     | Some (t) -> (fld.S.fldName, t)
@@ -130,7 +133,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
    * of each declaration. i.e. For any type declaration, tenv includes
    * name -> NAME(None) *)
   let rec trtype_decl tenv (decl : (Pos.t * Symbol.t * S.ty) list)
-    : Types.typeEnv = match decl with
+    : type_env = match decl with
     | [] -> tenv
     | (pos, name, ty) :: tl ->
       let t' =
@@ -151,10 +154,10 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
             end
         end
       in
-      trtype_decl (SymbolTable.enter name t' tenv) tl
+      trtype_decl (SymbolTable.add name t' tenv) tl
   in
   let rec trfunc_decl curr_level tenv venv (decl : (Pos.t * S.funcdecl) list)
-    : (Types.typeEnv * Types.valEnv) = match decl with
+    : (type_env * value_env) = match decl with
     | [] -> tenv, venv
     | (pos, {S.funName;S.fparams;S.fresult;S.fbody}) :: tl ->
       (** Functions must have been in the env. So, for each function,
@@ -166,14 +169,14 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
         | Some(Types.VarType(_)) -> raise (InternalError((Symbol.to_string funName) ^ " is not a function."))
         | Some(Types.FuncType(lev, arg, ret)) -> lev, arg, ret
       in
-      let args_access : (Translate.access * Types.t) list =
+      let args_access : (Translate.access * ty) list =
         List.combine (Translate.get_formals level) args_t in
       let args_sym : Symbol.t list = List.map (fun p -> p.S.fldName) fparams in
       let venv' = List.fold_right2 (fun name (acc, t) table -> (* binds args *)
-          SymbolTable.enter name (Types.VarType(acc, t)) table) args_sym args_access venv in
+          SymbolTable.add name (Types.VarType(acc, t)) table) args_sym args_access venv in
       let body_ir, body_t = trans_exp level None tenv venv' fbody in
       if not (compatible_type ret_t body_t) then
-        expect_type pos (Types.t_to_string ret_t) body_t
+        expect_type pos (ty_to_string ret_t) body_t
       else begin
         let is_procedure = (ret_t = Types.UNIT) in
         Translate.proc_entry_exit ~is_procedure level body_ir;
@@ -214,7 +217,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
                   else init_t
               end
           in
-          let venv' = SymbolTable.enter
+          let venv' = SymbolTable.add
               name (Types.VarType (acc, declared_t)) venv in
           let init' = Translate.assign (Translate.simple_var acc curr_level)
               init_ir :: inits in
@@ -228,13 +231,13 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
               | S.NameTy (_) -> false) lst in
           let name_t = List.map (fun (pos, s, _) ->pos, s, Types.NAME(s, ref None)) valid_recursive in
           let tenv' = List.fold_right (fun (pos, name,t) table ->
-              SymbolTable.enter name t table) name_t tenv in
+              SymbolTable.add name t table) name_t tenv in
           let tenv'' = trtype_decl tenv' lst in
           trans_iter tl tenv'' venv inits
         | S.FunctionDecl (lst) ->
           check_multi_def (List.map (fun (p, f) -> p, f.S.funName) lst);
           (** Construct a FuncType for each f in lst before checking functions *)
-          let func_list : (Symbol.t * Translate.level * Types.t list * Types.t) list =
+          let func_list : (Symbol.t * Translate.level * ty list * ty) list =
             List.map (fun (pos,func) ->
                 let label = Temp.new_label ~prefix:(Symbol.to_string func.S.funName) () in
                 let level = Translate.new_level curr_level label (List.map (fun _ -> true) func.S.fparams) in
@@ -244,7 +247,7 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
                   | Some (t) -> get_type pos t tenv in
                 func.S.funName, level, params_t, ret_t) lst in
           let venv' = List.fold_right (fun (name, level, arg, ret) table ->
-              SymbolTable.enter name (Types.FuncType(level, arg, ret)) table) func_list venv in
+              SymbolTable.add name (Types.FuncType(level, arg, ret)) table) func_list venv in
           let tenv', venv'' = trfunc_decl curr_level tenv venv' lst in
           trans_iter tl tenv' venv'' inits
       end
@@ -258,8 +261,8 @@ let rec trans_decl (curr_level : Translate.level) (tenv : Types.typeEnv)
  * @param venv: val environment
  * @param expr: exp to be translated
 *)
-and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (tenv : Types.typeEnv)
-    (venv : Types.valEnv) (expr : S.exp) : expty =
+and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (tenv : type_env)
+    (venv : value_env) (expr : S.exp) : expty =
   let rec trvar (var : S.var) : expty =
     match var with
     | S.VarId (pos, sym) -> begin
@@ -316,30 +319,30 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
             Translate.binop binop l_ir r_ir, Types.INT
           else
             raise (TypeError(pos, "Operator applied to non-integral types: " ^
-                                  (Types.t_to_string left_ty) ^ " and " ^
-                                  (Types.t_to_string right_ty)))
+                                  (ty_to_string left_ty) ^ " and " ^
+                                  (ty_to_string right_ty)))
         | S.OpLt | S.OpGt | S.OpLe | S.OpGe ->
           let relop = trans_relop op in
           if left_ty == Types.INT && right_ty = Types.INT then
             Translate.relop relop l_ir r_ir, Types.INT
           else
             raise (TypeError(pos, "Operator applied to non-integral types: " ^
-                                  (Types.t_to_string left_ty) ^ " and " ^
-                                  (Types.t_to_string right_ty)))
+                                  (ty_to_string left_ty) ^ " and " ^
+                                  (ty_to_string right_ty)))
         | S.OpEq | S.OpNeq ->
           let relop = trans_relop op in
           if compatible_type left_ty right_ty then
             Translate.relop relop l_ir r_ir, Types.INT
           else
             raise (TypeError(pos, "Operator applied to different types: " ^
-                                  (Types.t_to_string left_ty) ^ " and " ^
-                                  (Types.t_to_string right_ty)))
+                                  (ty_to_string left_ty) ^ " and " ^
+                                  (ty_to_string right_ty)))
       end
     | S.Assign (pos, var, e) ->
       let lhs_ir, left_ty = trvar var in
       let rhs_ir, right_ty = trexp e in
       if not (compatible_type left_ty right_ty) then
-        expect_type pos (Types.t_to_string left_ty) right_ty
+        expect_type pos (ty_to_string left_ty) right_ty
       else
         (* Ah! the overloaded MEM actually simplies the translation
            of assign. *)
@@ -350,7 +353,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
         | Some (Types.VarType(_)) ->
           raise (TypeError(pos, (Symbol.to_string f) ^ " is not applicable"))
         | Some (Types.FuncType (def_level, arg_t, ret_t)) ->
-          let rec check_arg (expect : Types.t list) (actual : S.exp list) : Translate.exp list = match expect, actual with
+          let rec check_arg (expect : ty list) (actual : S.exp list) : Translate.exp list = match expect, actual with
             | [], [] -> []
             | _, [] | [], _ -> raise (TypeError(pos, sprintf "Arity mismatch. Expected %d but got %d"
                                                   (List.length arg_t) (List.length args)))
@@ -362,7 +365,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                 | t -> t
               in
               if not (compatible_type actual_t' hd) then
-                expect_type (S.get_exp_pos hd') (Types.t_to_string hd) actual_t'
+                expect_type (S.get_exp_pos hd') (ty_to_string hd) actual_t'
               else
                 actual_ir :: check_arg tl tl'
           in
@@ -390,7 +393,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                     if compatible_type expect_t e_t then
                       e_ir
                     else
-                      expect_type pos (Types.t_to_string expect_t) e_t
+                      expect_type pos (ty_to_string expect_t) e_t
                 ) fields lst in
               Translate.record flds, record
             | _ -> expect_type pos "record" record
@@ -418,7 +421,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
         let thn_ir, thn_t = trexp thn in
         let els_ir, els_t = trexp els in
         if not (compatible_type thn_t els_t) then
-          expect_type (S.get_exp_pos els) (Types.t_to_string thn_t) els_t
+          expect_type (S.get_exp_pos els) (ty_to_string thn_t) els_t
         else if thn_t = Types.UNIT then
           Translate.if_cond_unit_body tst_ir thn_ir (Some els_ir), Types.UNIT
         else
@@ -440,7 +443,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
       begin match trexp lo, trexp hi with
         | (lo_ir, Types.INT), (hi_ir, Types.INT) ->
           let acc = Translate.alloc_local curr_level true in
-          let venv' = SymbolTable.enter v (Types.VarType(acc, Types.INT)) venv in
+          let venv' = SymbolTable.add v (Types.VarType(acc, Types.INT)) venv in
           (* The body will be discarded. BUGS: if another function is
              declared in the scope of 'for', that function will be
              stored but we re-translate it again. discard the body is
@@ -476,7 +479,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
           else
             let init_ir, init_t = trexp init in
             if not (compatible_type init_t t) then
-              expect_type (S.get_exp_pos init) (Types.t_to_string t) init_t
+              expect_type (S.get_exp_pos init) (ty_to_string t) init_t
             else
               Translate.array size_ir init_ir, Types.ARRAY(t, uniq)
         | Some(other_t) ->
@@ -493,7 +496,7 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
     that register, it is possible that the register contains a garbage
     value. *)
 let trans_prog (e : S.exp) : Translate.frag list =
-  let body, t = trans_exp Translate.outermost None Types.typeEnv Types.valEnv e in
+  let body, t = trans_exp Translate.outermost None init_type_env init_value_env e in
   let is_procedure = (t = Types.UNIT) in
   Translate.proc_entry_exit ~is_procedure Translate.outermost body;
   Translate.get_result()

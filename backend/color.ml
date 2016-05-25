@@ -1,10 +1,10 @@
 open Liveness
 open Debug
 open Batteries
-module F = Translate.F
 open Printf
 
-type allocation = F.register Temp.TempMap.t
+
+type allocation = Arch.register Temp.TempMap.t
 
 let allocation_to_string a =
   String.concat "\n"
@@ -63,16 +63,16 @@ let get_color_stack (igraph : igraph) (init : allocation)
     function colors the igraph with the usable registers *)
 let color (igraph : Liveness.igraph)
     (init : allocation)
-    (registers : F.register list) : allocation * Temp.temp list =
+    (registers : Arch.register list) : allocation * Temp.temp list =
   let stack = get_color_stack igraph init (List.length registers) in
-  let get_unused_reg cur_node (allocated : F.register Temp.TempMap.t) : F.register =
+  let get_unused_reg cur_node (allocated : Arch.register Temp.TempMap.t) : Arch.register =
     (* use adj list to filter all nodes whose status is Colored(reg) *)
     let used_regs = (let nodes = NodeSet.enum cur_node.Node.adj
                                  |> List.of_enum in
                      List.fold_right (fun n res -> match !(n.Node.status) with
                          | Colored(reg) -> reg :: res
                          | _ -> res) nodes []) in
-    let rec get_iter (all_regs : F.register list) =
+    let rec get_iter (all_regs : Arch.register list) =
       match all_regs with
       | [] -> failwith "Can't find unused reg."
       | hd :: rest ->

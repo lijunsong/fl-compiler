@@ -110,11 +110,11 @@ let instrs2graph instrs : flowgraph =
   List.iteri (fun idx (instr, node) ->
       connect idx instr node;
       if !Debug.debug then begin
-        let get_register_name t = match Translate.F.get_register_name t with
+        let get_register_name t = match Arch.get_register_name t with
           | None -> Temp.temp_to_string t
           | Some (r) -> r
         in
-        print_string (Codegen_x86.format  get_register_name instr);
+        print_string (Selection.format  get_register_name instr);
         print_string " -> ";
         print_endline (node_to_string node)
       end)
