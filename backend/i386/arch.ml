@@ -91,12 +91,8 @@ let rv = temp_of_register "%eax"
 (** stack pointer *)
 let sp = temp_of_register "%esp"
 
-(** init to 1. The first local resides at ebp-4 *)
-let count_locals = ref 1
-
 (** formals startat ebp+8, growing upward.*)
 let new_frame (name : Temp.label) (formals : bool list) : frame =
-  count_locals := 1;
   { name;
     formals = List.mapi (fun i f ->
         if f then
@@ -115,9 +111,9 @@ let label_to_string l : string =
 
 (** locals are indexed based on fp. *)
 let alloc_local fm escape =
-  let loc = InMem((-word_size) * !count_locals) in
+  let len = List.length fm.locals in
+  let loc = InMem((-word_size) * (len+1)) in
   fm.locals <- loc :: fm.locals;
-  incr count_locals;
   loc
 
 let bias = 0
