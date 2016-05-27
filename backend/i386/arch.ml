@@ -84,10 +84,12 @@ let register_of_temp (temp : Temp.temp) =
   with
   | _ -> None
 
-(** The ebp frame pointer *)
+(** frame pointer *)
 let fp = temp_of_register "%ebp"
-
+(** return value *)
 let rv = temp_of_register "%eax"
+(** stack pointer *)
+let sp = temp_of_register "%esp"
 
 (** init to 1. The first local resides at ebp-4 *)
 let count_locals = ref 1
@@ -144,27 +146,40 @@ let get_stack_size formals locals =
       so view shift generate move instructions to save those registers
       to maximize available registers. This cost will be removed when
       spilling is implemented.
+
+    - Because of i386 convention, the real view shift, that is push
+      ebp and move esp to ebp, is implemented as a hard-coded prolog
+      and eiplog at assembly level. See proc_entry_exit2
+
+    - Clean up locals are implemented here.
 *)
-let view_shift fm stmt =
+let view_shift fm body =
   (* generate memory local and temp tuple for saving and restoring
      callee-saved registers *)
+  let ebp = Ir.TEMP(fp) in
+  let esp = Ir.TEMP(sp) in
   let temps = List.map (fun reg ->
       let acc = alloc_local fm true in
-      let mem = get_access_exp (Ir.TEMP(fp)) acc in
+      let mem = get_access_exp ebp acc in
       let temp = temp_of_register reg in
       mem, Ir.TEMP(temp)) callee_save in
+  (* generate view shift IR to update ebp and esp *)
+  let stack_size = get_stack_size fm.formals fm.locals in
+  let alloc_locals = Ir.MOVE(esp,
+                            Ir.BINOP(Ir.MINUS, esp, Ir.CONST(stack_size))) in
   let save = List.map (fun (mem, temp) -> Ir.MOVE(mem, temp)) temps
              |> Ir.seq in
   let restore = List.map (fun (mem, temp) -> Ir.MOVE(temp, mem)) temps
                 |> Ir.seq in
-  Ir.SEQ(save, Ir.SEQ(stmt, restore))
+  let unwind_locals = Ir.MOVE(esp,
+                         Ir.BINOP(Ir.PLUS, esp, Ir.CONST(stack_size))) in
+  Ir.seq [alloc_locals; save; body; restore; unwind_locals]
 
 let proc_entry_exit2 f instrs =
   let live_reg = List.map temp_of_register ["%eax"] in
   instrs @ [Assem.OP("", [], live_reg, None)]
 
 let proc_entry_exit3 f body =
-  let stack_size = get_stack_size f.formals f.locals in
   (* caveat here: i386 uses _FOO as function foo's name. *)
   let f_name = label_to_string (get_name f) in
   let prolog = [
@@ -172,10 +187,8 @@ let proc_entry_exit3 f body =
     f_name ^ ":";         (* function start *)
     "push %ebp";
     "movl %esp, %ebp";
-    sprintf "subl $%d, %%esp" stack_size;
   ] in
   let epil = [
-    sprintf "addl $%d, %%esp" stack_size;
     "popl %ebp";
     "retl";
   ] in
