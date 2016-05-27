@@ -89,9 +89,9 @@ let relop_to_instr = function
 (**/ the following describe registers *)
 
 (** registers to which a call replaces its results *)
-let eax = Arch.get_temp "%eax"
+let eax = Arch.temp_of_register "%eax"
 let call_write_regs = [eax]
-let sp = Arch.get_temp "%esp"
+let sp = Arch.temp_of_register "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
   emit_comment_exp exp;

@@ -51,6 +51,16 @@ let registers = [
   "%ebp"; "%esp";
 ]
 
+(** registers that caller are responsible to save *)
+let caller_save = [
+  "%eax"; "%ecx"; "%edx"
+]
+
+(** registers that calee are responsible to save if to use it *)
+let callee_save = [
+  "%ebx"; "%esi"; "%edi"
+]
+
 (* maps from register to temp *)
 module Register_map = Map.Make(String)
 
@@ -110,10 +120,9 @@ let alloc_local fm escape =
 
 let bias = 0
 
-(** Given an expression for the base of an frame and given the
-    access of that frame, return an expression for contents of the
-    memory. *)
-let get_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc with
+(** Given an expression for the base of an frame and given an access,
+    return an expression for the in memory value of that access. *)
+let get_access_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc with
   | InReg(temp) -> Ir.TEMP(temp)
   | InMem(offset) ->
     Ir.MEM(Ir.BINOP(Ir.PLUS, frame_base, Ir.CONST(offset)))
@@ -126,7 +135,7 @@ let get_stack_size formals locals =
   let local_n = List.length locals in
   (local_n/4+1) * 16
 
-(** Implement view shift.
+(** Implement view shift on IR level.
 
     - Since we don't pass parameter in registers, so new_frame does
       nothing and view_shift does nothing for register parameters.
@@ -137,29 +146,36 @@ let get_stack_size formals locals =
       spilling is implemented.
 *)
 let view_shift fm stmt =
-  failwith "NYI"
+  (* generate memory local and temp tuple for saving and restoring
+     callee-saved registers *)
+  let temps = List.map (fun reg ->
+      let acc = alloc_local fm true in
+      let mem = get_access_exp (Ir.TEMP(fp)) acc in
+      let temp = temp_of_register reg in
+      mem, Ir.TEMP(temp)) callee_save in
+  let save = List.map (fun (mem, temp) -> Ir.MOVE(mem, temp)) temps
+             |> Ir.seq in
+  let restore = List.map (fun (mem, temp) -> Ir.MOVE(temp, mem)) temps
+                |> Ir.seq in
+  Ir.SEQ(save, Ir.SEQ(stmt, restore))
 
 let proc_entry_exit2 f instrs =
-  let live_reg = List.map temp_of_register ["%ebx"; "%edi"; "%esi"] in
+  let live_reg = List.map temp_of_register ["%eax"] in
   instrs @ [Assem.OP("", [], live_reg, None)]
 
 let proc_entry_exit3 f body =
   let stack_size = get_stack_size f.formals f.locals in
   (* caveat here: i386 uses _FOO as function foo's name. *)
-  let f_name = get_name f |> Temp.label_to_string in
+  let f_name = label_to_string (get_name f) in
   let prolog = [
     ".global " ^ f_name;  (* TODO: not all functions are global*)
     f_name ^ ":";         (* function start *)
     "push %ebp";
     "movl %esp, %ebp";
-    "pushl %edi";  (* TODO: push these two only when they are used. *)
-    "pushl %esi";
     sprintf "subl $%d, %%esp" stack_size;
   ] in
   let epil = [
     sprintf "addl $%d, %%esp" stack_size;
-    "popl %esi";
-    "popl %edi";
     "popl %ebp";
     "retl";
   ] in

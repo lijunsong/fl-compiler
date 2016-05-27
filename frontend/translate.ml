@@ -177,7 +177,7 @@ let simple_var (acc : access) (use_level : level) : exp =
      expression that describes fp from use_level to check_level. *)
   let rec get_var (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if check_level = def_level then
-      let ir = Arch.get_exp fp_exp fm_acc in
+      let ir = Arch.get_access_exp fp_exp fm_acc in
       ir
     else
       match check_level.parent with
@@ -186,7 +186,7 @@ let simple_var (acc : access) (use_level : level) : exp =
         (* get static link *)
         let sl : Arch.access = get_static_link check_level in
         (* follow up to find the def_level *)
-        let fp_exp' = Arch.get_exp fp_exp sl in
+        let fp_exp' = Arch.get_access_exp fp_exp sl in
         get_var parent fp_exp'
   in
   Ex(get_var use_level (Ir.TEMP(Arch.fp)))
@@ -288,14 +288,14 @@ let rec get_enclosing_level_fp def_level use_level : exp =
   let rec get_fp (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if def_level = check_level then
       let sl : Arch.access = get_static_link check_level in
-      Arch.get_exp fp_exp sl
+      Arch.get_access_exp fp_exp sl
     else
       match def_level.parent, check_level.parent with
       | Some (def_parent), _ when def_parent = check_level ->
         fp_exp
       | Some (def_parent), Some (check_parent) ->
         let sl : Arch.access = get_static_link check_level in
-        let fp_exp' = Arch.get_exp fp_exp sl in
+        let fp_exp' = Arch.get_access_exp fp_exp sl in
         get_fp  check_parent fp_exp'
       | _ -> failwith "static link not found"
   in
@@ -436,7 +436,7 @@ let proc_entry_exit ?(is_procedure=false) level fbody : unit =
     else
       Ir.MOVE(Ir.TEMP(Arch.rv), unEx fbody) in
   (* do view shift *)
-  let stmt = Arch.proc_entry_exit1 fm body in
+  let stmt = Arch.view_shift fm body in
   frag_list := Arch.PROC(stmt, fm) :: !frag_list
 
 let get_result () : frag list =

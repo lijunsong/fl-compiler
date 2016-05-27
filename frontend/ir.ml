@@ -60,27 +60,28 @@ let get_op = function
 let rec exp_to_doc e =
   let open Pprint in
   let open Printf in
+  let comma = text "," in
   match e with
   | CONST n -> text (string_of_int n)
   | NAME l -> text (sprintf "NAME(%s)" (Temp.label_to_string l))
   | TEMP t -> text (Temp.temp_to_string t)
   | BINOP (op, e0, e1) ->
     text "BINOP("
-    <-> nest 6 (text (binop_to_string op)
-                <-> exp_to_doc e0
+    <-> nest 6 (text (binop_to_string op) <-> comma
+                <-> exp_to_doc e0 <-> comma
                 <-> exp_to_doc e1
                 <-> text ")")
   | MEM (m) ->
     text "MEM(" <-> nest 4 (exp_to_doc m <-> text ")")
   | CALL (f, args) ->
     text "CALL("
-    <-> nest 5 (exp_to_doc f <-> text ","
+    <-> nest 5 (exp_to_doc f <-> comma
                 <-> line
-                <-> concat (text ",") (List.map exp_to_doc args)
+                <-> concat comma (List.map exp_to_doc args)
                 <-> text ")")
   | ESEQ (s, e) ->
     text "ESEQ("
-    <-> nest 5 (stmt_to_doc s <-> text ","
+    <-> nest 5 (stmt_to_doc s <-> comma
                 <-> line
                 <-> (exp_to_doc e)
                 <-> (text ")"))
@@ -88,11 +89,12 @@ let rec exp_to_doc e =
 and stmt_to_doc stmt =
   let open Pprint in
   let open Printf in
+  let comma = text "," in
   match stmt with
   | MOVE (dst, src) ->
     text "MOVE("
     <-> nest 5 (exp_to_doc dst
-                <-> text ", "
+                <-> comma
                 <-> exp_to_doc src
                 <-> text ")")
   | EXP e ->
@@ -101,26 +103,26 @@ and stmt_to_doc stmt =
     <-> nest 4 (text ")")
   | JUMP (e, ls) ->
     text "JUMP("
-    <-> nest 5 (exp_to_doc e <-> text ",")
-    <-> nest 5 (concat (text "," <-> line)
+    <-> nest 5 (exp_to_doc e <-> comma)
+    <-> nest 5 (concat (comma <-> line)
                   (List.map (fun l ->
                        text (Temp.label_to_string l)) ls))
     <-> nest 5 (text ")")
   | CJUMP (op, e0, e1, t, f) ->
     text "CJUMP("
     <-> nest 6 (
-      (text (relop_to_string op) <-> text ",")
+      (text (relop_to_string op) <-> comma)
       <-> line
-      <-> (exp_to_doc e0) <-> text ","
+      <-> (exp_to_doc e0) <-> comma
       <-> line
-      <-> (exp_to_doc e1) <-> text ","
+      <-> (exp_to_doc e1) <-> comma
       <-> line
-      <-> (text (Temp.label_to_string t)) <-> text ", "
+      <-> (text (Temp.label_to_string t)) <-> comma
       <-> (text (Temp.label_to_string f))
       <-> text ")")
   | SEQ (s1, s2) ->
     text "SEQ("
-    <-> nest 4 (stmt_to_doc s1 <-> text ","
+    <-> nest 4 (stmt_to_doc s1 <-> comma
                 <-> line
                 <-> stmt_to_doc s2 <-> text ")")
   | LABEL (l) ->

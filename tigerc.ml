@@ -83,7 +83,7 @@ let print_lang lang =
       ir_list
   | ASSEM(proc_list, str_frags) ->
     (* At this stage, only print machine register name when we know it. *)
-    let get_register_name t = match Arch.get_register_name t with
+    let get_register_name t = match Arch.register_of_temp t with
       | None -> Temp.temp_to_string t
       | Some (reg) -> reg
     in

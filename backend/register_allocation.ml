@@ -6,7 +6,7 @@ open Liveness
 let rec precolor igraph : unit = match igraph with
   | [] -> ()
   | node :: rest ->
-    begin match Arch.get_register_name node.Node.temp with
+    begin match Arch.register_of_temp node.Node.temp with
       | Some (reg) ->
         (* precolored. set the status *)
         node.Node.status := Colored(reg)
@@ -19,5 +19,5 @@ let alloc instr : Assem.instr list * allocation =
   let fgraph = Flow.instrs2graph instr in
   let igraph = flow2igraph fgraph in
   let () = precolor igraph in
-  let reg_alloc, temps = Color.color igraph Arch.known_temp Arch.registers in
+  let reg_alloc, temps = Color.color igraph Arch.temp_map Arch.registers in
   instr, reg_alloc
