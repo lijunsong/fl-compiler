@@ -1,9 +1,11 @@
 S frontend
 S backend
+S util
 S tests
 B _build
 B _build/frontend
 B _build/backend
 B _build/tests
+B _build/util
 PKG Batteries
 PKG OUnit

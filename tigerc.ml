@@ -37,7 +37,7 @@ let program = ref EMPTY
 let assem_proc_to_string get_register_name (instr_list, fm) =
   let body = List.map (fun instr ->
       Selection.format get_register_name instr) instr_list in
-  let all = Arch.proc_entry_exit3 fm body in
+  let all = Arch.add_prolog_epilog fm body in
   all
 
 let print_lang lang =

@@ -70,9 +70,8 @@ val view_shift : frame -> Ir.stmt -> Ir.stmt
  * This is called after codegen. *)
 val proc_entry_exit2 : frame -> Assem.instr list -> Assem.instr list
 
-(** genearte assembly prologue and epilogue, this is called after
- *  codegen. *)
-val proc_entry_exit3 : frame -> string list -> string list
+(** genearte assembly prologue and epilogue. *)
+val add_prolog_epilog : frame -> string list -> string list
 
 (** dump frame information for debugging *)
 val debug_dump : frame -> unit

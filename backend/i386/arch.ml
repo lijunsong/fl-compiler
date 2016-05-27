@@ -179,7 +179,10 @@ let proc_entry_exit2 f instrs =
   let live_reg = List.map temp_of_register ["%eax"] in
   instrs @ [Assem.OP("", [], live_reg, None)]
 
-let proc_entry_exit3 f body =
+(** For i386, it is easier to implement the real view shift in
+    assembly lang, this function is implemented to generate view shift
+    instruction too. *)
+let add_prolog_epilog f body =
   (* caveat here: i386 uses _FOO as function foo's name. *)
   let f_name = label_to_string (get_name f) in
   let prolog = [
