@@ -6,14 +6,9 @@ open Batteries
 
 let unreachable () = failwith "unreachable"
 
+(** [visit_stmt stmt] is the main function to call to generate
+    canonical IR. *)
 let rec visit_stmt = function
-  | Ir.MOVE(Ir.TEMP(t), Ir.CALL(f, args)) ->
-     reorder_stmt (f :: args)
-                  (function
-                   | f' :: args' ->
-                      assert(List.length args = List.length args');
-                      Ir.MOVE(Ir.TEMP(t), Ir.CALL(f', args'))
-                   | _ -> unreachable())
   | Ir.MOVE(Ir.TEMP(t), r) ->
      reorder_stmt [r]
                   (function
@@ -43,13 +38,20 @@ let rec visit_stmt = function
      Ir.SEQ(s1', s2')
   | Ir.LABEL (_) as l -> l
 
-(** visit_exp searches in an exp, extracts all sub-exp that need
-raise, and replaces these sub-exp with temps. *)
+(** [visit_exp exp] is a helper function, it extracts all sub-exp in
+    the given exp that need to raise, and replaces these sub-exp with
+    temps. *)
 and visit_exp e : Ir.stmt * Ir.exp =
   (* Printf.printf "visit_exp: %s\n%!" (Ir.exp_to_string e); *)
   match e with
   | Ir.CONST (_) | Ir.NAME (_) | Ir.TEMP(_) ->
-     Ir.EXP(Ir.CONST(0)), e
+    Ir.EXP(Ir.CONST(0)), e
+  | Ir.BINOP (op0, Ir.BINOP(op1, e1, e2), e3) ->
+    (* raise the first BINOP for clarity *)
+    let t = Ir.TEMP(Temp.new_temp()) in
+    let move = Ir.MOVE(t, Ir.BINOP(op1, e1, e2)) in
+    let others, exp = visit_exp (Ir.BINOP(op0, t, e3))in
+    Ir.SEQ(move, others), exp
   | Ir.BINOP (op, e1, e2) ->
      reorder_exp [e1; e2] (function
                            | [e1'; e2'] -> Ir.BINOP(op, e1', e2')
@@ -59,14 +61,28 @@ and visit_exp e : Ir.stmt * Ir.exp =
                        | [e1'] -> Ir.MEM(e1')
                        | _ -> unreachable())
   | Ir.CALL (f, args) ->
-     let temp = Ir.TEMP(Temp.new_temp()) in
-     let ir = Ir.ESEQ(Ir.MOVE(temp, e), temp) in
-     visit_exp ir
+    (* MOVE the result of CALL to a temp and use the temp to replace
+       CALL. *)
+    let prepend, new_call = reorder_exp (f :: args)
+        (function
+          | f' :: args' -> Ir.CALL(f', args')
+          | _ -> unreachable())
+    in
+    let temp = Ir.TEMP(Temp.new_temp()) in
+    Ir.SEQ(prepend,
+           Ir.MOVE(temp, new_call)), temp
   | Ir.ESEQ (s0, e) ->
      let new_s0 = visit_stmt s0 in
      let new_s1, new_e = visit_exp e in
      Ir.SEQ(new_s0, new_s1), new_e
 
+(** For a statement S, reorder_stmt takes the to-be-reordered children
+    of S, and a function taking new children to replace the old
+    children with new ones. It returns a new statement including
+
+    1. raised statements
+    2. new S with replaced children
+*)
 and reorder_stmt (children : Ir.exp list)
                  (replace : (Ir.exp list -> Ir.stmt)): Ir.stmt =
   let to_prepend, new_exp = List.map visit_exp children

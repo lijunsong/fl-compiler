@@ -23,6 +23,7 @@ clean:
 tests:
 	for p in $(all_tests); do \
 	ocamlbuild -use-ocamlfind $${p%.ml}.byte; \
+	./$$(basename $${p%.ml}.byte); \
 	done
 
 testbuild: all

@@ -10,18 +10,18 @@ let compile (content : string) : unit =
   let frags = Semant.trans_prog ast in
   let procs, str_frags = List.partition
       (fun frag -> match frag with
-         | Translate.F.PROC (_) -> true
+         | Arch.PROC (_) -> true
          | _ -> false) frags in
   (* generate body *)
   let () = List.iter (fun frag -> match frag with
-      | Translate.F.PROC(ir, fm) ->
+      | Arch.PROC(ir, fm) ->
         let instrs, alloc =
           Canon.linearize ir
           |> Canon.basic_blocks
           |> Canon.trace_schedule
           |> (fun ir ->
               let seq = Ir.seq ir in
-              Codegen.codegen fm seq)
+              Selection.codegen fm seq)
           |> Register_allocation.alloc in
         let get_register_name t =
           (* let it fail if it fails *)
@@ -29,18 +29,18 @@ let compile (content : string) : unit =
         in
         (* get the body section *)
         let () = List.map (fun i ->
-            Codegen.format get_register_name i)
+            Selection.format get_register_name i)
             instrs
-                   |> Translate.F.proc_entry_exit3 fm
+                   |> Arch.add_prolog_epilog fm
                    |> (fun _ -> ()) in
         ()
       | _ -> failwith "String fragment found in Proc fragments.")
       procs in
   let data_frags = List.map (fun frag -> match frag with
-      | Translate.F.PROC(_) -> failwith "proc found in string frags."
-      | Translate.F.STRING(l, s) -> (l, s)) str_frags in
+      | Arch.PROC(_) -> failwith "proc found in string frags."
+      | Arch.STRING(l, s) -> (l, s)) str_frags in
   (* generate data *)
-  let data = Codegen.codegen_data data_frags in
+  let data = Selection.codegen_data data_frags in
   (ignore data)
 
 let assert_pass (s : string) =
