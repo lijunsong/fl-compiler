@@ -116,46 +116,6 @@ let linearize stmt : Ir.stmt list =
   |> drop_const_exp
 
 
-let basic_blocks linearized =
-  (* stmt_list: is current unprocessed stmt sequence.
-   * curr_block_rev: is current basic block; stores a list of stmt in
-   *                reversed order.
-   * result_rev: stores a list of basic blocks in reversed order
-   *
-   * NOTE: reversing the order to increasing the performance.
-  *)
-  let done_label = Temp.new_label ~prefix:"exit" () in
-  let is_jump = function
-    | Ir.JUMP(_) | Ir.CJUMP(_) -> true
-    | _ -> false in
-  let rec split stmt_list (curr_block_rev : Ir.stmt list) result_rev =
-    match stmt_list, curr_block_rev with
-    | [], [] -> List.rev result_rev
-    | [], lst -> List.rev ((List.rev curr_block_rev) :: result_rev)
-    | Ir.LABEL(l) :: rest, [ ] ->
-       split rest [Ir.LABEL(l)] result_rev
-    | Ir.LABEL(l) :: rest, prev :: rest' when is_jump prev ->
-       split rest [Ir.LABEL(l)] ((List.rev curr_block_rev) :: result_rev)
-    | Ir.LABEL(l) :: rest, prev :: rest' ->
-       let add_jump = Ir.JUMP(Ir.NAME(l), [l]) :: curr_block_rev in
-       split rest [Ir.LABEL(l)] ((List.rev add_jump) :: result_rev)
-    | stmt :: rest, lst when is_jump stmt ->
-      let lst = if lst = [] then
-          (*failwith ("basic_blocks: jump following an empty block. " ^
-                   "Look like a bug in irgen and basic block.")*)
-          [stmt; Ir.LABEL(Temp.new_label())]
-        else
-          stmt :: lst in
-      let block = List.rev lst in
-      split rest [] (block :: result_rev)
-    | stmt :: rest, [ ] -> (* here stmt can not be a label *)
-      split rest [stmt; Ir.LABEL(Temp.new_label())] result_rev
-    | stmt :: rest, lst ->
-       split rest (stmt :: lst) result_rev
-  in
-  let linearized' = linearized @ [Ir.JUMP(Ir.NAME(done_label), [done_label])] in
-  split linearized' [] [], done_label
-
 (** ------ Trace ----- *)
 
 (** BlockMap maps from a label to the basic_block that it starts and a
@@ -185,7 +145,8 @@ let get_jump_info block : Temp.label * Temp.label list =
     in
     block_label, jump_to
 
-let trace_schedule (basic_blocks, lexit) : Ir.stmt list =
+let trace_schedule (bbs, lexit) : Ir.stmt list =
+  let basic_blocks = Basic_block.to_stmts bbs in
   (* [get_block_jump_info blocks] returns a hashmap mapping from
      labels to blocks that they belong to, and a list of blocks'
      starting label and jump-to labels information *)

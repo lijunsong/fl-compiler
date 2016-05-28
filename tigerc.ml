@@ -11,7 +11,7 @@ type string_frags = Translate.frag list
 
 type linear_proc = linear * Arch.frame
 
-type bb_proc = linear list * Temp.label * Arch.frame
+type bb_proc = Basic_block.t list * Temp.label * Arch.frame
 
 type assem_proc = Assem.instr list * Arch.frame
 
@@ -63,12 +63,10 @@ let print_lang lang =
     print_string_frags strs
 
   | BLOCKS(bb_proc_list, label) ->
-    List.iter (fun (bb,l,fm) ->
+    List.iter (fun (bbs,l,fm) ->
         Arch.debug_dump fm;
-        print_string ("label: " ^ (Temp.label_to_string l) ^ "\n");
-        List.iter (fun lst ->
-            print_string "block:\n";
-            print_ir_list lst) bb;
+        Basic_block.basic_blocks_to_doc bbs |> Pprint.print_doc;
+        print_string ("label: " ^ (Temp.label_to_string l) ^ "\n")
       ) bb_proc_list
   | TRACE(proc_list, strs) ->
     List.iter (fun (ir_list, fm) ->
@@ -185,7 +183,7 @@ let to_blocks () =
   match !program with
   | CANON(ir_list, strs) ->
     let bbs = List.map (fun (ir,fm) ->
-        let bb, l = Canon.basic_blocks ir in
+        let bb, l = Basic_block.basic_blocks ir in
         bb, l, fm) ir_list in
     program := BLOCKS(bbs, strs)
   | _ -> failwith "Can't convert to blocks"
@@ -193,10 +191,10 @@ let to_blocks () =
 let to_trace () =
   to_blocks ();
   match !program with
-  | BLOCKS(bbs, strs) ->
-    let traced = List.map (fun (bb,l,fm) ->
-        let list = Canon.trace_schedule (bb, l) in
-        list, fm) bbs in
+  | BLOCKS(procs, strs) ->
+    let traced = List.map (fun (bbs,l,fm) ->
+        let list = Canon.trace_schedule (bbs, l) in
+        list, fm) procs in
     program := TRACE(traced, strs)
   | _ -> failwith "Can't convert to trace"
 
