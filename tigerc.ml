@@ -193,7 +193,7 @@ let to_trace () =
   match !program with
   | BLOCKS(procs, strs) ->
     let traced = List.map (fun (bbs,l,fm) ->
-        let list = Canon.trace_schedule (bbs, l) in
+        let list = Trace.trace_schedule (bbs, l) in
         list, fm) procs in
     program := TRACE(traced, strs)
   | _ -> failwith "Can't convert to trace"

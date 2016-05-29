@@ -9,7 +9,19 @@ type t = {
     - The first instruction is a LABEL
     - The last instruction is a JUMP or CJUMP
     - There is no other labels or jumps in a basic block
+
 *)
+
+type basic_block_t = t
+
+module BBlock = struct
+  type t = basic_block_t
+  let compare a b = compare a.label b.label
+end
+
+module BBlockMap = Map.Make(BBlock)
+
+module BBlockSet = Set.Make(BBlock)
 
 let basic_block_to_doc bb =
   let open Pprint in
@@ -106,3 +118,20 @@ let to_stmts bbs =
     Ir.LABEL(bb.label) :: bb.stmts
   in
   List.map bb_to_stmts bbs
+
+let join blk1 blk2 : t list =
+  let stmt, jump = Util.split_last blk1.stmts in
+  match jump with
+  (*| Ir.JUMP (Ir.NAME(l), _) when blk2.label = l ->
+      let new_stmts = (Ir.LABEL(blk1.label)) :: (stmt @ blk2.stmts) in
+      [create new_stmts]*)
+  | Ir.CJUMP (op, e0, e1, t, f) when blk2.label = f ->
+    begin match blk2.stmts with
+      | [Ir.JUMP(Ir.NAME(l), _)] ->
+        let new_stmts = Ir.LABEL(blk1.label) :: stmt @ [Ir.CJUMP(op, e0, e1, t, l)] in
+        [create new_stmts]
+      | _ ->
+        [blk1; blk2]
+    end
+  | _ ->
+    [blk1; blk2]

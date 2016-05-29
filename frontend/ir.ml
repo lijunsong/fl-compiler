@@ -38,6 +38,20 @@ let rec seq stmts : stmt = match stmts with
   | hd :: tl ->
     SEQ(hd, seq tl)
 
+let flip_op = function
+  | EQ -> NE
+  | NE -> EQ
+  | LT -> GE
+  | LE -> GT
+  | GE -> LT
+  | GT -> LE
+  | _ -> failwith "NYI"
+
+let flip_cjump stmt : stmt = match stmt with
+  | CJUMP (op, e1, e2, t, f) ->
+    CJUMP (flip_op op, e1, e2, f, t)
+  | _ -> raise (Invalid_argument "argument is not a CJUMP.")
+
 and binop_to_string = function
   | PLUS -> "+"
   | MINUS -> "-"

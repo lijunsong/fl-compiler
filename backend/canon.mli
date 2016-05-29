@@ -1,6 +1,10 @@
+(** Description: This is the first phase of normalize IR,
+    after linearize.
+
+    - There are no ESEQ and SEQ.
+    - Certain subexpressions, like CALL, will be raised to a MOVE or
+      EXP statement.
+*)
+
 (** Remove ESEQ; move CALL to top level*)
 val linearize : Ir.stmt -> Ir.stmt list
-
-(** Given basic blocks and a exit label, simplify CJUMP so that it is
-    followed by its false label. *)
-val trace_schedule : Basic_block.t list * Temp.label -> Ir.stmt list
