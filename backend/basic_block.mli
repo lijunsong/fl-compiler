@@ -12,8 +12,6 @@ open Batteries
 type t = {
   label : Temp.label; (** The label of this block *)
   stmts: Ir.stmt list; (** Instructions in this block *)
-  mutable pred : t list; (** predecessors *)
-  mutable succ : t list; (** successors *)
 }
 
 
@@ -33,6 +31,9 @@ val get_jump_stmt : t -> Ir.stmt
 (** [get_jump_stmt bb] get the jump (CJUMP or JUMP) statement in the
     basic block [bb].
 
+    TODO: consider to return option. After all invariant only holds
+    before cleaning jumps in trace.
+
     @raise Failure if no such statement exists (Basic Block invariant
     is broken)*)
 
@@ -42,27 +43,12 @@ val basic_blocks : Ir.stmt list -> t list * Temp.label
     basic block will jump to.
 *)
 
-val compute_control_flow : t list -> unit
-(** generate predecessor and successor info for each block *)
-
 val basic_block_to_doc : t -> Pprint.doc
 
 val basic_blocks_to_doc : t list -> Pprint.doc
 
 val to_stmts : t list -> Ir.stmt list list
 
-val join : t -> t -> t list
-(** [join blk1 blk2] joins two blocks for two situation:
-
-    1. If the jump in [blk1] is JUMP to the label of [blk2], this
-    function joins the two blocks by eliminating the JUMP and LABEL in
-    the middle.
-
-    2. If the jump in [blk1] is CJUMP and [blk2] is the false branch
-    with a single [JUMP(NAME(l))] as its body, this function
-    eliminates [blk2] and replacing the [blk1]'s false label with [l]
-
-    It returns the two blocks if joining is not applicable.
-
-    To join a list of blocks, use List.fold_right for one pass.
-*)
+val validate_jumps : t list -> unit
+(** assert all jump statement (except the jump to exit) has a valid
+    label to jump to *)

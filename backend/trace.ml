@@ -12,10 +12,10 @@
 
 open Batteries
 
-(** [follow_false_label blocks] traverse the basic block list given by
-    [blocks] starting from the first block. It returns the traversing
-    path *)
-let follow_false_label blocks : Basic_block.t list =
+(** [trace_blocks blocks] reorders the basic block list given by
+    [blocks] starting from the first block using DFS order. It returns
+    the traversing path.  *)
+let trace_blocks blocks : Basic_block.t list =
   let start = List.first blocks in
   let open Basic_block in
   (* map label -> basic_block for fast fetch *)
@@ -60,18 +60,71 @@ let follow_false_label blocks : Basic_block.t list =
   push_label start.label;
   dfs BBlockSet.empty []
 
-(** Given a list of blocks, apply [Basic_block.join] on all blocks. *)
-let clean_fall_through_jump bbs = match bbs with
-  | [] -> bbs
-  | hd :: [] -> bbs
-  | _ ->
-    let len = List.length bbs in
-    let elms, last = List.split_at (len-1) bbs in
-    List.fold_right (fun blk1 rest ->
-        (* the first arg of @ is of length 1 or 2, so the performance
-           is good. *)
-        (Basic_block.join blk1 (List.hd rest)) @ (List.tl rest))
-      elms last
+(** Given a list of blocks, clean fall-through jumps and single jump block in the
+    blocks.  Because this function breaks the invariant of basic block
+    (i.e. there must be a jump in the end), this function shall be
+    called as the last operation preparing IR for instruction
+    selection.
+
+    For fall through jump like label1: ... JUMP(label2) label2: ...
+
+    In this situation, JUMP(label2) will be removed.
+
+    For single jump block like label1: JUMP(labelx) label2: ...
+
+    any jump jumping to label1 needs to jump to the final destination
+    of labelx (which can be another jump).
+
+    We do cleaning single jump first, and then fall-through jumps
+*)
+let clean_jumps bbs =
+  let open Basic_block in
+  let labelmap = Basic_block.create_labelmap bbs in
+  let clean_fall_through_blocks bbs =
+    let clean_fall_through blk1 rest =
+      match rest with
+      | [] -> [blk1]
+      | blk2 :: tl ->
+        let elms, last = Util.split_last blk1.stmts in
+        begin match last with
+          | Ir.JUMP(Ir.NAME(l), _) when l = blk2.label ->
+            create (Ir.LABEL blk1.label :: elms) :: rest
+          | _ -> blk1 :: rest
+        end
+    in
+    let result = List.fold_right clean_fall_through bbs [] in
+    result
+  in
+  let clean_single_jump_block bbs =
+    (* invariant still holds for clean_single_jump_block's input
+       block *)
+    let rec jump_dest lab =
+      match Temp.LabelMap.find_opt lab labelmap with
+      | Some (bb) when List.length bb.stmts = 1 ->
+        begin match List.hd bb.stmts with
+          | Ir.JUMP (Ir.NAME(l), _) -> jump_dest l
+          | _ -> lab
+        end
+      | _ -> lab
+    in
+    let chase_dest bb =
+      let elms, last = Util.split_last bb.stmts in
+      match last with
+      | Ir.CJUMP (op, e1, e2, t, f) ->
+        create (Ir.LABEL bb.label :: elms @
+                [Ir.CJUMP(op, e1, e2, jump_dest t, jump_dest f)])
+      | Ir.JUMP (Ir.NAME(l), _) ->
+        let new_lab = jump_dest l in
+        create (Ir.LABEL bb.label :: elms @
+                [Ir.JUMP(Ir.NAME(new_lab), [new_lab])])
+      | _ -> failwith "unreachable"
+    in
+    List.map chase_dest bbs
+    |> trace_blocks (* clean unused jump block *)
+  in
+  clean_single_jump_block bbs
+  |> clean_fall_through_blocks
+
 
 (** For any block whose CJUMP's true label is the next block's label,
     flip the relation operation in CJUMP *)
@@ -81,24 +134,22 @@ let flip_cjump (bbs : Basic_block.t list) =
   let result =
     List.fold_left
       (fun result b2 ->
-        let b1 = List.hd result in
-        let elm, last = Util.split_last b1.stmts in
-        match last with
-        | Ir.CJUMP (_, _, _, t, _) when t = b2.label ->
-          let new_cjump = Ir.flip_cjump last in
-          let new_b1 = Basic_block.create (Ir.LABEL(b1.label) :: elm
-                                         @ [new_cjump]) in
-          b2 :: new_b1 :: (List.tl result)
-        | _ -> b2 :: result
+         let b1 = List.hd result in
+         let elm, last = Util.split_last b1.stmts in
+         match last with
+         | Ir.CJUMP (_, _, _, t, _) when t = b2.label ->
+           let new_cjump = Ir.flip_cjump last in
+           let new_b1 = Basic_block.create (Ir.LABEL(b1.label) :: elm
+                                            @ [new_cjump]) in
+           b2 :: new_b1 :: (List.tl result)
+         | _ -> b2 :: result
       ) [List.hd bbs] (List.tl bbs)
   in
   List.rev result
 
 let trace_schedule (bbs, exit_label) =
-  let bbs' = follow_false_label bbs in
-  Basic_block.compute_control_flow bbs';
-  let bbs'' = clean_fall_through_jump bbs'
-              |> flip_cjump in
-  Basic_block.compute_control_flow bbs'';
-  Pprint.print_doc (Basic_block.basic_blocks_to_doc bbs'');
-  List.flatten (Basic_block.to_stmts bbs'')
+  let bbs' = trace_blocks bbs
+             |> flip_cjump
+             |> clean_jumps in
+  Basic_block.validate_jumps bbs';
+  List.flatten (Basic_block.to_stmts bbs')

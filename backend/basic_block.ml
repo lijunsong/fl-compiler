@@ -3,8 +3,6 @@ open Batteries
 type t = {
   label : Temp.label; (** The label of this block *)
   stmts: Ir.stmt list; (** Instructions in this block *)
-  mutable pred : t list; (** predecessors *)
-  mutable succ : t list; (** successors *)
 }
 (** Basic block is the basic construct for optimization. It ensures
 
@@ -37,18 +35,9 @@ let get_jump_stmt bb =
 
 let basic_block_to_doc bb =
   let open Pprint in
-  let flow_to_doc bb =
-    text " [pred ("
-    <-> (concat (text ",")
-           (List.map (fun b -> text (Temp.label_to_string b.label)) bb.pred))
-    <-> text "); succ ("
-    <-> (concat (text ",")
-           (List.map (fun b -> text (Temp.label_to_string b.label)) bb.succ))
-    <-> text ")]"
-  in
   let to_doc bb =
     let lab = Temp.label_to_string bb.label in
-    text lab <-> flow_to_doc bb
+    text lab
     <-> nest (String.length lab)
       (line <-> (concat line (List.map Ir.stmt_to_doc bb.stmts)))
   in
@@ -63,7 +52,7 @@ let basic_blocks_to_doc bbs =
 let create stmts =
   match stmts with
   | Ir.LABEL(l) :: rest ->
-    {label = l; stmts = rest; succ = []; pred = []}
+    {label = l; stmts = rest}
   | _ -> failwith "No label found to construct a basic block."
 
 let is_jump = function
@@ -71,8 +60,9 @@ let is_jump = function
   | Ir.JUMP (_) -> true
   | _ -> false
 
-(** verify the invariant of a basic block: No label (because label is
-    in part of the struct) and No jump-like IR. *)
+(** verify the invariant of a basic block (only valid for basic block
+    construction): No label (because label is in part of the struct)
+    and has only one jump-like IR. See also validate_jumps *)
 let verify_basic_blocks bbs =
   let is_label = function
     | Ir.LABEL(_) -> true
@@ -85,6 +75,32 @@ let verify_basic_blocks bbs =
     assert (List.length jumps = 1)
   in
   List.iter verify bbs
+
+let validate_jumps bbs =
+  let labelmap = create_labelmap bbs in
+  let validate lab = not (Temp.LabelMap.mem lab labelmap) in
+  let invalid = List.filter (fun bb ->
+      try
+        begin match get_jump_stmt bb with
+          | Ir.CJUMP(_, _, _, t, f) ->
+            validate t && validate f
+          | Ir.JUMP (_, ls) ->
+            List.for_all validate ls
+          | _ -> false
+        end
+      with _ -> false) bbs
+  in
+  match invalid with
+  | [] -> ()
+  | [hd] -> () (* the exit label is not mapped *)
+  | _ ->
+    Pprint.print_doc (basic_blocks_to_doc invalid);
+    raise (Failure(Printf.sprintf "There are %d invalid jumps."
+                  (List.length invalid)))
+
+
+
+
 
 (** invariant: the first stmt in [stmts] must be a LABEL. *)
 let munch_basic_block exit_label stmts : t * Ir.stmt list =
@@ -121,27 +137,6 @@ let munch_basic_block exit_label stmts : t * Ir.stmt list =
   in
   munch stmts []
 
-let compute_control_flow bbs =
-  List.iter (fun b ->
-      b.succ <- [];
-      b.pred <- []) bbs;
-  let labelmap = create_labelmap bbs in
-  let add_succ bb succ_lab =
-    match Temp.LabelMap.find_opt succ_lab labelmap with
-    | None -> ()
-    | Some (succ) ->
-      bb.succ <- succ :: bb.succ;
-      succ.pred <- bb :: succ.pred
-  in
-  List.iter (fun bb -> match get_jump_stmt bb with
-      | Ir.CJUMP (_, _, _, t, f) ->
-        add_succ bb t;
-        add_succ bb f;
-      | Ir.JUMP (_, ls) ->
-        List.iter (add_succ bb) ls
-      | _ -> failwith "unreachable"
-    ) bbs
-
 let basic_blocks linearized =
   let exit_label = Temp.new_label ~prefix:"exit" () in
   let rec make result stmts =
@@ -164,10 +159,6 @@ let to_stmts bbs =
 let join blk1 blk2 : t list =
   let stmt, jump = Util.split_last blk1.stmts in
   match jump with
-  | Ir.JUMP (Ir.NAME(l), _)
-    when blk2.label = l && List.length blk2.pred = 1 ->
-      let new_stmts = (Ir.LABEL(blk1.label)) :: (stmt @ blk2.stmts) in
-      [create new_stmts]
   | Ir.CJUMP (op, e0, e1, t, f) when blk2.label = f ->
     begin match blk2.stmts with
       | [Ir.JUMP(Ir.NAME(l), _)] ->
