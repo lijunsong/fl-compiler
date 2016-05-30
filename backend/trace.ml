@@ -12,19 +12,6 @@
 
 open Batteries
 
-let make_labelmap blocks : Basic_block.t Temp.LabelMap.t =
-  List.map (fun b -> b.Basic_block.label, b) blocks
-  |> List.enum
-  |> Temp.LabelMap.of_enum
-
-let get_jump_stmt bb =
-  let open Basic_block in
-  match List.last bb.stmts with
-  | Ir.CJUMP(_)
-  | Ir.JUMP (_) as e -> e
-  | _ -> failwith ("last stmt isn't JUMP/CJUMP in block " ^
-                   Temp.label_to_string bb.label)
-
 (** [follow_false_label blocks] traverse the basic block list given by
     [blocks] starting from the first block. It returns the traversing
     path *)
@@ -32,7 +19,7 @@ let follow_false_label blocks : Basic_block.t list =
   let start = List.first blocks in
   let open Basic_block in
   (* map label -> basic_block for fast fetch *)
-  let labelmap = make_labelmap blocks in
+  let labelmap = create_labelmap blocks in
   let get_block lab =
     if Temp.LabelMap.mem lab labelmap then
       Some (Temp.LabelMap.find lab labelmap)
@@ -74,7 +61,7 @@ let follow_false_label blocks : Basic_block.t list =
   dfs BBlockSet.empty []
 
 (** Given a list of blocks, apply [Basic_block.join] on all blocks. *)
-let join_blocks bbs = match bbs with
+let clean_fall_through_jump bbs = match bbs with
   | [] -> bbs
   | hd :: [] -> bbs
   | _ ->
@@ -108,8 +95,10 @@ let flip_cjump (bbs : Basic_block.t list) =
   List.rev result
 
 let trace_schedule (bbs, exit_label) =
-  let bbs' = follow_false_label bbs
-             |> join_blocks
-             |> flip_cjump in
-  Pprint.print_doc (Basic_block.basic_blocks_to_doc bbs');
-  List.flatten (Basic_block.to_stmts bbs')
+  let bbs' = follow_false_label bbs in
+  Basic_block.compute_control_flow bbs';
+  let bbs'' = clean_fall_through_jump bbs'
+              |> flip_cjump in
+  Basic_block.compute_control_flow bbs'';
+  Pprint.print_doc (Basic_block.basic_blocks_to_doc bbs'');
+  List.flatten (Basic_block.to_stmts bbs'')

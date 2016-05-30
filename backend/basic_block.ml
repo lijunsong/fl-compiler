@@ -3,13 +3,14 @@ open Batteries
 type t = {
   label : Temp.label; (** The label of this block *)
   stmts: Ir.stmt list; (** Instructions in this block *)
+  mutable pred : t list; (** predecessors *)
+  mutable succ : t list; (** successors *)
 }
 (** Basic block is the basic construct for optimization. It ensures
 
     - The first instruction is a LABEL
     - The last instruction is a JUMP or CJUMP
     - There is no other labels or jumps in a basic block
-
 *)
 
 type basic_block_t = t
@@ -23,11 +24,31 @@ module BBlockMap = Map.Make(BBlock)
 
 module BBlockSet = Set.Make(BBlock)
 
+let create_labelmap bbs =
+  List.map (fun bb -> bb.label, bb) bbs
+  |> Temp.LabelMap.of_list
+
+let get_jump_stmt bb =
+  match List.last bb.stmts with
+  | Ir.CJUMP(_)
+  | Ir.JUMP (_) as e -> e
+  | _ -> failwith ("last stmt isn't JUMP/CJUMP in block " ^
+                   Temp.label_to_string bb.label)
+
 let basic_block_to_doc bb =
   let open Pprint in
+  let flow_to_doc bb =
+    text " [pred ("
+    <-> (concat (text ",")
+           (List.map (fun b -> text (Temp.label_to_string b.label)) bb.pred))
+    <-> text "); succ ("
+    <-> (concat (text ",")
+           (List.map (fun b -> text (Temp.label_to_string b.label)) bb.succ))
+    <-> text ")]"
+  in
   let to_doc bb =
     let lab = Temp.label_to_string bb.label in
-    text lab
+    text lab <-> flow_to_doc bb
     <-> nest (String.length lab)
       (line <-> (concat line (List.map Ir.stmt_to_doc bb.stmts)))
   in
@@ -42,7 +63,7 @@ let basic_blocks_to_doc bbs =
 let create stmts =
   match stmts with
   | Ir.LABEL(l) :: rest ->
-    {label = l; stmts = rest}
+    {label = l; stmts = rest; succ = []; pred = []}
   | _ -> failwith "No label found to construct a basic block."
 
 let is_jump = function
@@ -100,6 +121,27 @@ let munch_basic_block exit_label stmts : t * Ir.stmt list =
   in
   munch stmts []
 
+let compute_control_flow bbs =
+  List.iter (fun b ->
+      b.succ <- [];
+      b.pred <- []) bbs;
+  let labelmap = create_labelmap bbs in
+  let add_succ bb succ_lab =
+    match Temp.LabelMap.find_opt succ_lab labelmap with
+    | None -> ()
+    | Some (succ) ->
+      bb.succ <- succ :: bb.succ;
+      succ.pred <- bb :: succ.pred
+  in
+  List.iter (fun bb -> match get_jump_stmt bb with
+      | Ir.CJUMP (_, _, _, t, f) ->
+        add_succ bb t;
+        add_succ bb f;
+      | Ir.JUMP (_, ls) ->
+        List.iter (add_succ bb) ls
+      | _ -> failwith "unreachable"
+    ) bbs
+
 let basic_blocks linearized =
   let exit_label = Temp.new_label ~prefix:"exit" () in
   let rec make result stmts =
@@ -122,9 +164,10 @@ let to_stmts bbs =
 let join blk1 blk2 : t list =
   let stmt, jump = Util.split_last blk1.stmts in
   match jump with
-  (*| Ir.JUMP (Ir.NAME(l), _) when blk2.label = l ->
+  | Ir.JUMP (Ir.NAME(l), _)
+    when blk2.label = l && List.length blk2.pred = 1 ->
       let new_stmts = (Ir.LABEL(blk1.label)) :: (stmt @ blk2.stmts) in
-      [create new_stmts]*)
+      [create new_stmts]
   | Ir.CJUMP (op, e0, e1, t, f) when blk2.label = f ->
     begin match blk2.stmts with
       | [Ir.JUMP(Ir.NAME(l), _)] ->

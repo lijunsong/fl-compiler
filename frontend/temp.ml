@@ -26,7 +26,16 @@ let new_label ?(prefix="L") () =
 let named_label name =
   Symbol.of_string name
 
-module LabelMap = Map.Make(Symbol)
+module LabelMap =
+struct
+  include Map.Make(Symbol)
+  let find_opt x m =
+    if mem x m then Some (find x m)
+    else None
+  let of_list lst =
+    List.enum lst
+    |> of_enum
+end
 
 module TempSet = Set.Make(struct
     type t = temp

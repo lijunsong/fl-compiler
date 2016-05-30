@@ -20,5 +20,7 @@ module SymbolTable : sig
 
   val look : key -> 'a t -> 'a option
 
+  val find_opt : key -> 'a t -> 'a option
+
   val of_list : (key * 'a) list -> 'a t
 end
