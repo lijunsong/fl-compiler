@@ -28,7 +28,7 @@ tests:
 
 testbuild: all
 	for t in $(cg_tests); do \
-	./$(TC).byte -load $$t -codegen1 -p > $${t%.tig}.s 2>/dev/null; \
+	./$(TC).byte -load $$t -codegen -p > $${t%.tig}.s 2>/dev/null; \
 	test $$? -eq 0 && echo "passed: $$t" || echo "failed: $$t"; \
 	done
 

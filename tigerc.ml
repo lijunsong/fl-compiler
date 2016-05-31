@@ -22,7 +22,7 @@ type lang =
   | CANON of linear_proc list * string_frags
   | BLOCKS of bb_proc list * string_frags
   | TRACE of linear_proc list * string_frags
-  | ASSEM of assem_proc list * string_frags
+  | INSTR_SELECT of assem_proc list * string_frags
   | FLOW of Flow.flowgraph list
   (** FLOW only transits to INTERFERENCE. It can't transit to final codegen *)
   | INTERFERENCE of Liveness.igraph list
@@ -79,7 +79,7 @@ let print_lang lang =
   | IR(ir_list) ->
     List.iter (fun ir -> Translate.frag_to_string ir |> print_endline)
       ir_list
-  | ASSEM(proc_list, str_frags) ->
+  | INSTR_SELECT(proc_list, str_frags) ->
     (* At this stage, only print machine register name when we know it. *)
     let get_register_name t = match Arch.register_of_temp t with
       | None -> Temp.temp_to_string t
@@ -114,13 +114,13 @@ let print_lang lang =
     let str = String.concat "\n" str_list in
     (* emit text header and the code text *)
     let () = print_endline text_header in
-    let () = print_endline str in
+    print_endline str
     (* emit the string *)
-    let frags = List.map (fun frag -> match frag with
+    (*let frags = List.map (fun frag -> match frag with
         | Arch.PROC(_) -> failwith "proc found in string frags."
         | Arch.STRING(l, s) -> (l, s)) str_frags in
     let data = Selection.codegen_data frags in
-    print_endline data
+      print_endline data*)
 
 
 let load s =
@@ -204,14 +204,14 @@ let to_assem () =
   | TRACE (procs, str_frags) ->
     let res = List.map (fun (ir, frame) ->
         let seq = Ir.seq ir in
-        Selection.codegen frame seq, frame) procs in
-    program := ASSEM(res, str_frags);
+        Selection.select_instr frame seq, frame) procs in
+    program := INSTR_SELECT(res, str_frags);
   | _ -> failwith "Can't convert to assemly"
 
 let to_regalloc () =
   to_assem();
   match !program with
-  | ASSEM (assems, str_frags) ->
+  | INSTR_SELECT (assems, str_frags) ->
     program := REGISTER_ALLOC(
         List.map (fun (instrs, frame) ->
             let instrs', alloc = Register_allocation.alloc instrs in
@@ -222,7 +222,7 @@ let to_regalloc () =
 let to_flowgraph () =
   to_assem();
   match !program with
-  | ASSEM (assms, str_frags) ->
+  | INSTR_SELECT (assms, str_frags) ->
     program := FLOW (List.map (fun (ass, _) -> Flow.instrs2graph ass) assms)
   | _ -> failwith "Can't convert to a flowgraph."
 
@@ -241,11 +241,11 @@ let specs = [
   ("-load", Arg.String(load), "load a tiger program");
   ("-ast", Arg.Unit(to_ast), "convert the program to an AST");
   ("-ir", Arg.Unit(to_ir), "convert the program to ir");
-  ("-canon", Arg.Unit(to_canon), "convert the program to Canonical IR");
-  ("-basicblock", Arg.Unit(to_blocks), "convert the program to basic blocks");
-  ("-trace", Arg.Unit(to_trace), "convert the program to Traced IR");
-  ("-codegen0", Arg.Unit(to_assem), "convert the program to assembly Lang without register allocation (Sparc for now)");
-  ("-codegen1", Arg.Unit(to_regalloc), "convert the program to assembly Lang with register allocation (Sparc for now)");
+  ("-canon", Arg.Unit(to_canon), "Remove ESEQ and raise CALL");
+  ("-basicblock", Arg.Unit(to_blocks), "Generate basic blocks");
+  ("-trace", Arg.Unit(to_trace), "Preparing IR for instruction selection");
+  ("-select-instr", Arg.Unit(to_assem), "instruction selection");
+  ("-codegen", Arg.Unit(to_regalloc), "convert the program to assembly Lang with register allocation (Sparc for now)");
   ("-flowgraph", Arg.Unit(to_flowgraph), "generate flow graph of the program");
   ("-igraph", Arg.Unit(to_igraph), "generate interference graph of the program");
   ("-type-check", Arg.Unit(type_check), "type check the given program (tiger or AST)");

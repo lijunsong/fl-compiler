@@ -94,7 +94,6 @@ let call_write_regs = [eax]
 let sp = Arch.temp_of_register "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
-  emit_comment_exp exp;
   match exp with
   | Ir.CONST(i) ->
     result(fun t ->
@@ -111,14 +110,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
     let r1 = munch_exp e1 in
     result(fun t ->
         emit(MOVE("mov 's0, 'd0", t, r0));
-        match op with
-          | Ir.PLUS -> OP("add 's0, 'd0", [t], [r1], None) |> emit
-          | Ir.MINUS -> OP("sub 's0, 'd0", [t], [r1], None) |> emit
-          | Ir.MUL -> emit(OP("imul 's0, 'd0", [t], [r1], None))
-            (*emit(MOVE("mov 's0, 'd0", eax, t));
-            emit(OP("imul 's0", [], [r1], None));
-              emit(MOVE("mov 's0, 'd0", t, eax));*)
-          | _ -> failwith "NYI BINOP")
+        emit(OP(sprintf "%s 's0, 'd0" (binop_to_instr op), [t], [r1; t], None)))
   | Ir.CALL (Ir.NAME(l), args) ->
     (* Caveat: CALL could be external calls (like calls in runtime),
        or user defined tiger function calls. Keep name as it is
@@ -133,7 +125,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
            from eax to t. *)
         emit(OP("call " ^ (assembly_label_string l), [Arch.rv], [], None));
         emit(MOVE("mov 's0, 'd0", t, Arch.rv));
-        (* unwind the stack *)
+        (* TODO: move to prior phase. unwind the stack *)
         let arg_n = List.length args in
         if arg_n <> 0 then
           emit(OP(sprintf "add $%d, 's0" (arg_n * Arch.word_size), [sp], [sp], None)))
@@ -159,11 +151,14 @@ and munch_args args : unit =
     emit(OP("push 's0", [], [t], None))
 
 and munch_stmt (stmt : Ir.stmt) : unit =
-  emit_comment_stmt stmt;
   match stmt with
   | Ir.SEQ (s0, s1) ->
     munch_stmt s0;
     munch_stmt s1
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), Ir.CONST(c)) ->
+    (* move const to memory *)
+    let lhs = munch_exp ir_lhs in
+    OP(sprintf "mov $%d, %d('s0)" c n, [], [lhs], None) |> emit
   | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs) ->
     (* move to memory *)
     let lhs = munch_exp ir_lhs in
@@ -172,7 +167,12 @@ and munch_stmt (stmt : Ir.stmt) : unit =
   | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n)))) ->
     (* move from memory to register *)
     let lhs = munch_exp ir_lhs in
-    OP(sprintf "mov %d('s0), 's1" n, [], [lhs; r], None) |> emit
+    OP(sprintf "mov %d('s0), 'd0" n, [r], [lhs], None) |> emit
+  | Ir.MOVE (Ir.TEMP(r), Ir.BINOP(op, Ir.TEMP(r1), Ir.CONST(n))) when r = r1 ->
+    emit(OP(sprintf "%s $%d, 'd0" (binop_to_instr op) n,
+            [r], [r], None))
+  | Ir.MOVE (Ir.TEMP(t), Ir.CONST(n)) ->
+    emit(OP(sprintf "mov $%d, 'd0" n, [t], [], None))
   | Ir.MOVE (Ir.MEM(e), e1) ->
     let src = munch_exp e in
     let moveto = munch_exp e1 in
@@ -213,21 +213,7 @@ and result gen : temp =
   gen t;
   t
 
-let codegen frame ir =
+let select_instr frame ir =
   instr_list := [];
   munch_stmt ir;
   List.rev !instr_list
-
-let codegen_data frags =
-  let rec gen_iter frags str_list =
-    match frags with
-    | [] -> str_list
-    | (l, s) :: rest ->
-      Arch.string l s :: gen_iter rest str_list
-  in
-  (* generate data section content *)
-  let data = gen_iter frags [] |> String.concat "\n" in
-  (* OK. Now we need section header *)
-  let header = [
-  ] |> String.concat "\n" in
-  header ^ "\n" ^ data
