@@ -151,7 +151,7 @@ let flip_cjump (bbs : Basic_block.t list) =
     appended to make the program complete. *)
 let trace_schedule (bbs, exit_label) =
   let bbs' = trace_blocks bbs
-             |> flip_cjump
-             |> clean_jumps in
+             |> clean_jumps
+             |> flip_cjump in
   Basic_block.validate_jumps bbs';
   List.flatten (Basic_block.to_stmts bbs')  @ [Ir.LABEL(exit_label)]

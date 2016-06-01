@@ -129,8 +129,16 @@ let rec munch_exp (exp : Ir.exp) : temp =
         let arg_n = List.length args in
         if arg_n <> 0 then
           emit(OP(sprintf "add $%d, 's0" (arg_n * Arch.word_size), [sp], [sp], None)))
-  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n))) ->
+
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n)))
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), Ir.TEMP(r))) ->
     result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
+
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
+  | Ir.MEM (Ir.BINOP(Ir.PLUS, e, Ir.CONST(n))) ->
+    let r = munch_exp e in
+    result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
+
   | Ir.MEM (e) ->
     let r0 = munch_exp e in
     result(fun t -> emit(OP("mov ('s0), 'd0", [t], [r0], None)))
@@ -144,44 +152,61 @@ and munch_args args : unit =
   | [] -> ()
   | Ir.CONST(n) :: rest ->
     munch_args rest;
-    emit(OP(sprintf "push $%d" n, [], [], None))
+    emit(OP(sprintf "pushl $%d" n, [], [], None))
   | arg :: rest ->
     munch_args rest;
     let t = munch_exp arg in
-    emit(OP("push 's0", [], [t], None))
+    emit(OP("pushl 's0", [], [t], None))
 
 and munch_stmt (stmt : Ir.stmt) : unit =
   match stmt with
   | Ir.SEQ (s0, s1) ->
     munch_stmt s0;
     munch_stmt s1
-  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), Ir.CONST(c)) ->
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_rand, Ir.CONST(n))), Ir.CONST(c))
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), ir_rand)), Ir.CONST(c)) ->
     (* move const to memory *)
-    let lhs = munch_exp ir_lhs in
-    OP(sprintf "mov $%d, %d('s0)" c n, [], [lhs], None) |> emit
-  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs) ->
-    (* move to memory *)
+    let rand = munch_exp ir_rand in
+    OP(sprintf "movl $%d, %d('s0)" c n, [], [rand], None) |> emit
+
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))), ir_rhs)
+  | Ir.MOVE (Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), ir_lhs)), ir_rhs) ->
+    (* move others to memory *)
     let lhs = munch_exp ir_lhs in
     let v = munch_exp ir_rhs in
-    OP(sprintf "mov 's0, %d('s1)" n, [], [v; lhs], None) |> emit
-  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n)))) ->
+    OP(sprintf "movl 's0, %d('s1)" n, [], [v; lhs], None) |> emit
+
+  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.TEMP(lhs), Ir.CONST(n))))
+  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), Ir.TEMP(lhs)))) ->
+    (* move from memory (reg calculation) to register *)
+    OP(sprintf "movl %d('s0), 'd0" n, [r], [lhs], None) |> emit
+
+  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, ir_lhs, Ir.CONST(n))))
+  | Ir.MOVE (Ir.TEMP(r), Ir.MEM(Ir.BINOP(Ir.PLUS, Ir.CONST(n), ir_lhs))) ->
     (* move from memory to register *)
     let lhs = munch_exp ir_lhs in
-    OP(sprintf "mov %d('s0), 'd0" n, [r], [lhs], None) |> emit
+    OP(sprintf "movl %d('s0), 'd0" n, [r], [lhs], None) |> emit
+
   | Ir.MOVE (Ir.TEMP(r), Ir.BINOP(op, Ir.TEMP(r1), Ir.CONST(n))) when r = r1 ->
+    (* arithmetic *)
     emit(OP(sprintf "%s $%d, 'd0" (binop_to_instr op) n,
             [r], [r], None))
+
   | Ir.MOVE (Ir.TEMP(t), Ir.CONST(n)) ->
-    emit(OP(sprintf "mov $%d, 'd0" n, [t], [], None))
+    emit(OP(sprintf "movl $%d, 'd0" n, [t], [], None))
+
+  | Ir.MOVE (Ir.TEMP(d), Ir.TEMP(s)) ->
+    emit(MOVE("movl 's0, 'd0", d, s))
+
   | Ir.MOVE (Ir.MEM(e), e1) ->
     let src = munch_exp e in
     let moveto = munch_exp e1 in
     (* dst is (), because it is the memory not the reg that holds the value *)
-    OP("mov 's0, ('s1)", [], [moveto; src], None)
+    OP("movl 's0, ('s1)", [], [moveto; src], None)
     |> emit
   | Ir.MOVE (Ir.TEMP(t), e) ->
     let src = munch_exp e in
-    MOVE("mov 's0, 'd0", t, src)
+    MOVE("movl 's0, 'd0", t, src)
     |> emit
   | Ir.EXP(e) ->
     let src = munch_exp e in
@@ -190,7 +215,14 @@ and munch_stmt (stmt : Ir.stmt) : unit =
   | Ir.JUMP (Ir.NAME(l), ls) ->
     OP("jmp " ^ (assembly_label_string l), [], [], Some ls)
     |> emit
-  | Ir.CJUMP (relop, e0, e1, t, f) -> (* TODO: this is not maximal munch *)
+
+  | Ir.CJUMP (relop, e1, Ir.CONST(n), t, f) ->
+    let r = munch_exp e1 in
+    OP(sprintf "cmp $%d, 's0" n, [], [r], None) |> emit;
+    OP(sprintf "%s %s" (relop_to_instr relop)
+         (assembly_label_string t), [], [], Some([t; f])) |> emit
+
+  | Ir.CJUMP (relop, e0, e1, t, f) ->
     let t0 = munch_exp e0 in
     let t1 = munch_exp e1 in
     OP("cmp 's0, 's1",
