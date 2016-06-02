@@ -34,12 +34,6 @@ type lang =
 
 let program = ref EMPTY
 
-let assem_proc_to_string get_register_name (instr_list, fm) =
-  let body = List.map (fun instr ->
-      Selection.format get_register_name instr) instr_list in
-  let all = Arch.add_prolog_epilog fm body in
-  all
-
 let print_lang lang =
   let print_ir_list list =
     List.iter (fun stmt -> print_endline (Ir.stmt_to_string stmt)) list
@@ -85,8 +79,11 @@ let print_lang lang =
       | None -> Temp.temp_to_string t
       | Some (reg) -> reg
     in
-    List.iter (fun p -> let s = assem_proc_to_string get_register_name p in
-                List.iter print_endline s) proc_list
+    let () = List.iter (fun (instrs, fm) ->
+        Emit.emit_instr instrs get_register_name fm)
+        proc_list in
+    Emit.emit_data str_frags
+
 
   | FLOW(graphs) ->
     let str_list = List.map Flow.to_string graphs in
@@ -97,31 +94,15 @@ let print_lang lang =
     let str = String.concat "------\n" str_list in
     print_endline str
   | REGISTER_ALLOC (allocs, str_frags) ->
-    let str_list = List.map (fun ((instrs, fm),alloc) ->
+    let () = List.iter (fun ((instrs, fm),alloc) ->
         let get_register_name tmp =
           try Temp.TempMap.find tmp alloc
-          with _ -> failwith (sprintf "temp %s is not assigned a register." (Temp.temp_to_string tmp))
+          with _ -> failwith (sprintf "temp %s is not assigned a register."
+                                (Temp.temp_to_string tmp))
         in
-        let assem = String.concat "\n" (assem_proc_to_string get_register_name (instrs, fm)) in
-        let assem' = if !(Debug.debug) then
-            let alloc_str = Color.allocation_to_string alloc in
-            assem ^ "\n" ^ alloc_str
-          else
-            assem in
-        assem'
+        Emit.emit_instr instrs get_register_name fm
       ) allocs in
-    let text_header = "" in
-    let str = String.concat "\n" str_list in
-    (* emit text header and the code text *)
-    let () = print_endline text_header in
-    print_endline str
-    (* emit the string *)
-    (*let frags = List.map (fun frag -> match frag with
-        | Arch.PROC(_) -> failwith "proc found in string frags."
-        | Arch.STRING(l, s) -> (l, s)) str_frags in
-    let data = Selection.codegen_data frags in
-      print_endline data*)
-
+    Emit.emit_data str_frags
 
 let load s =
   let contents = Util.file_to_string s in
