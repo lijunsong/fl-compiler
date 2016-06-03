@@ -102,7 +102,7 @@ let rec munch_exp (exp : Ir.exp) : temp =
   | Ir.NAME(l) ->
     result(fun t ->
         let l_str = assembly_label_string l in
-        emit(OP(sprintf "mov %s, 'd0" l_str, [t], [], None)))
+        emit(OP(sprintf "mov $%s, 'd0" l_str, [t], [], None)))
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
   | Ir.BINOP(op, e0, e1) ->

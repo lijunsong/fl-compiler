@@ -8,10 +8,12 @@ let
                 a - b - c
           in
           assert(f() = -3); /* f() )pass current fp */
+          f()
           end
     in
     assert(bar() = -3); /* pass current fp */
+    bar()
     end
 in
-  assert(foo() = -3); /* pass current fp */
+  assert(foo() = -3) /* pass current fp */
 end
