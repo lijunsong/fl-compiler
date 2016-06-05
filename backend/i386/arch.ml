@@ -129,9 +129,26 @@ let get_access_exp (frame_base : Ir.exp) (acc : access) : Ir.exp = match acc wit
     bytes aligned. cdecl doesn't count formals as part of its stack
     size. For prologue use, the total subtract size must include
     additional 2 slots: return value and return address. *)
-let get_stack_size formals locals =
-  let local_n = List.length locals in
-  (local_n/4+1) * 16
+let get_stack_size localn =
+  (localn/4+1) * 16 - 8
+
+let rec maximum_callee_args stmt =
+  let open Ir in
+  let rec search = function
+    | CONST(_)
+    | NAME(_)
+    | TEMP(_) -> 0
+    | BINOP(_, l, r) ->
+      max (search l) (search r)
+    | MEM (e) -> search e
+    | CALL (e, es) ->
+      let m = List.length es in
+      let len = m :: (search e) :: List.map search es in
+      List.reduce max len
+    | ESEQ (s, e) ->
+      max (maximum_callee_args s) (search e)
+  in
+  List.reduce max (List.map search (children stmt))
 
 (** Implement view shift on IR level.
 
@@ -160,7 +177,8 @@ let view_shift fm body =
       let temp = temp_of_register reg in
       mem, Ir.TEMP(temp)) callee_save in
   (* generate view shift IR to update ebp and esp *)
-  let stack_size = get_stack_size fm.formals fm.locals in
+  let stack_size = get_stack_size
+      ((maximum_callee_args body) + (List.length fm.locals)) in
   let alloc_locals = Ir.MOVE(esp,
                             Ir.BINOP(Ir.MINUS, esp, Ir.CONST(stack_size))) in
   let save = List.map (fun (mem, temp) -> Ir.MOVE(mem, temp)) temps
@@ -207,7 +225,7 @@ let string l s =
   let l_str = label_to_string l in
   let str = [
     l_str ^ ":";
-    sprintf ".word %d" (String.length s);
-    sprintf ".ascii \"%s\"" s;
+    sprintf ".long %d" (String.length s);
+    sprintf ".asciz \"%s\"" s;
   ] in
   String.concat "\n" str

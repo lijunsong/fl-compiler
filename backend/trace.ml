@@ -127,31 +127,51 @@ let clean_jumps bbs =
 
 
 (** For any block whose CJUMP's true label is the next block's label,
-    flip the relation operation in CJUMP *)
-let flip_cjump (bbs : Basic_block.t list) =
+    flip the relation operation in CJUMP.
+
+    For any block whose CJUMP's true and false label are not next
+    block's label, create a new block with jumps to false label.
+
+    This function works on basic blocks that may not have JUMP-like
+    statments, but there shall be no empty-body blocks so split_last
+    shall work fine here.
+
+    This function appends exit creates exit block.
+*)
+let fix_cjump exit (bbs : Basic_block.t list) =
   let open Basic_block in
-  (* Invarant: result's length >= 1 *)
+  let exit_block = Basic_block.create ([Ir.LABEL(exit)]) in
+  (* Invarant: result's length >= 1. exit block will be appended when
+     it starts *)
   let result =
-    List.fold_left
-      (fun result b2 ->
-         let b1 = List.hd result in
-         let elm, last = Util.split_last b1.stmts in
+    List.fold_right
+      (fun workon result ->
+         let elm, last = Util.split_last workon.stmts in
+         let next = List.hd result in
          match last with
-         | Ir.CJUMP (_, _, _, t, _) when t = b2.label ->
-           let new_cjump = Ir.flip_cjump last in
-           let new_b1 = Basic_block.create (Ir.LABEL(b1.label) :: elm
-                                            @ [new_cjump]) in
-           b2 :: new_b1 :: (List.tl result)
-         | _ -> b2 :: result
-      ) [List.hd bbs] (List.tl bbs)
-  in
-  List.rev result
+         | Ir.CJUMP (_, _, _, t, _) when t = next.label ->
+           (* fall through to true label *)
+           let workon' = Basic_block.create(Ir.LABEL(workon.label) :: elm
+                                            @ [Ir.flip_cjump last]) in
+           workon' :: result
+         | Ir.CJUMP (op, e1, e2, t, f) when t <> next.label &&
+                                            f <> next.label ->
+           (* jump to neither *)
+           let l = Temp.new_label () in
+           let b = Basic_block.create [Ir.LABEL(l);
+                                       Ir.JUMP(Ir.NAME(f), [f])] in
+           let workon' = Basic_block.create (Ir.LABEL(workon.label) :: elm
+                                             @ [Ir.CJUMP(op, e1, e2, t, l)]) in
+           workon' :: b :: result
+         | _ -> workon :: result
+      ) bbs [exit_block] in
+  result
 
 (** The main entry for tracing blocks. In the end, the exit label is
     appended to make the program complete. *)
 let trace_schedule (bbs, exit_label) =
   let bbs' = trace_blocks bbs
              |> clean_jumps
-             |> flip_cjump in
+             |> fix_cjump exit_label in
   Basic_block.validate_jumps bbs';
-  List.flatten (Basic_block.to_stmts bbs')  @ [Ir.LABEL(exit_label)]
+  List.flatten (Basic_block.to_stmts bbs')

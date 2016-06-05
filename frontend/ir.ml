@@ -31,6 +31,14 @@ and relop =
   | EQ | NE | LT | GT | LE | GE
   | ULT | ULE | UGT | UGE
 
+let rec children = function
+  | MOVE (e0, e1) -> [e0; e1]
+  | EXP (e) -> [e]
+  | JUMP (e,_) -> [e]
+  | CJUMP (_, e0, e1, _, _) -> [e0; e1]
+  | SEQ (s1, s2) -> (children s1) @ (children s2)
+  | LABEL (_) -> []
+
 (** chain stmts list by SEQ *)
 let rec seq stmts : stmt = match stmts with
   | [] -> EXP(CONST(0))

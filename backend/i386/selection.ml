@@ -123,40 +123,34 @@ let rec munch_exp (exp : Ir.exp) : temp =
            here. But this t represents the result of the call, and
            will be used by others. So generate an extra call move
            from eax to t. *)
-        emit(OP("call " ^ (assembly_label_string l), [Arch.rv], [], None));
-        emit(MOVE("mov 's0, 'd0", t, Arch.rv));
-        (* TODO: move to prior phase. unwind the stack *)
-        let arg_n = List.length args in
-        if arg_n <> 0 then
-          emit(OP(sprintf "add $%d, 's0" (arg_n * Arch.word_size), [sp], [sp], None)))
-
+        emit(OP("call " ^ (assembly_label_string l), [t], [], None));
+        emit(MOVE("movl 's0, 'd0", Arch.rv, t)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), Ir.TEMP(r))) ->
-    result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
+    result (fun t -> emit(OP(sprintf "movl %d('s0), 'd0" n, [t], [r], None)))
 
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), e))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, e, Ir.CONST(n))) ->
     let r = munch_exp e in
-    result (fun t -> emit(OP(sprintf "mov %d('s0), 'd0" n, [t], [r], None)))
+    result (fun t -> emit(OP(sprintf "movl %d('s0), 'd0" n, [t], [r], None)))
 
   | Ir.MEM (e) ->
     let r0 = munch_exp e in
-    result(fun t -> emit(OP("mov ('s0), 'd0", [t], [r0], None)))
+    result(fun t -> emit(OP("movl ('s0), 'd0", [t], [r0], None)))
   | _ -> failwith "NYI"
 
 (* x86-32 passes arguments on stack, so munch_args returns unit.
    The right most argument is pushed first.
  *)
 and munch_args args : unit =
-  match args with
-  | [] -> ()
-  | Ir.CONST(n) :: rest ->
-    munch_args rest;
-    emit(OP(sprintf "pushl $%d" n, [], [], None))
-  | arg :: rest ->
-    munch_args rest;
-    let t = munch_exp arg in
-    emit(OP("pushl 's0", [], [t], None))
+  List.iteri (fun i arg -> match arg with
+      | Ir.CONST(n) ->
+        emit(OP(sprintf "movl $%d, %d(%%esp)" n (i*4), [], [], None))
+      | e ->
+        let t = munch_exp e in
+        emit(OP(sprintf "movl 's0, %d(%%esp)" (i*4), [], [t], None))
+    ) args
+
 
 and munch_stmt (stmt : Ir.stmt) : unit =
   match stmt with
