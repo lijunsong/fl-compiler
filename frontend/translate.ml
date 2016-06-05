@@ -339,7 +339,7 @@ let record (fields : exp list) =
                 v)
       ) fields in
   let init_ir_stmt = Ir.seq init_ir_stmts in
-  let alloca = Ir.MOVE(temp, Arch.external_call "malloc" [Ir.CONST(Arch.word_size * n)]) in
+  let alloca = Ir.MOVE(temp, Arch.external_call "allocRecord" [Ir.CONST(Arch.word_size * n)]) in
   Ex(Ir.ESEQ(Ir.SEQ(alloca, init_ir_stmt),
              temp))
 

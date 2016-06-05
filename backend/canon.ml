@@ -9,6 +9,13 @@ let unreachable () = failwith "unreachable"
 (** [visit_stmt stmt] is the main function to call to generate
     canonical IR. *)
 let rec visit_stmt = function
+  | Ir.MOVE(Ir.TEMP(t), Ir.CALL(f, args)) ->
+    reorder_stmt (f :: args)
+      (function
+        | f' :: args' ->
+          assert(List.length args = List.length args');
+          Ir.MOVE(Ir.TEMP(t), Ir.CALL(f', args'))
+        | _ -> unreachable())
   | Ir.MOVE(Ir.TEMP(t), r) ->
      reorder_stmt [r]
                   (function
@@ -61,16 +68,9 @@ and visit_exp e : Ir.stmt * Ir.exp =
                        | [e1'] -> Ir.MEM(e1')
                        | _ -> unreachable())
   | Ir.CALL (f, args) ->
-    (* MOVE the result of CALL to a temp and use the temp to replace
-       CALL. *)
-    let prepend, new_call = reorder_exp (f :: args)
-        (function
-          | f' :: args' -> Ir.CALL(f', args')
-          | _ -> unreachable())
-    in
-    let temp = Ir.TEMP(Temp.new_temp()) in
-    Ir.SEQ(prepend,
-           Ir.MOVE(temp, new_call)), temp
+     let temp = Ir.TEMP(Temp.new_temp()) in
+     let ir = Ir.ESEQ(Ir.MOVE(temp, e), temp) in
+     visit_exp ir
   | Ir.ESEQ (s0, e) ->
      let new_s0 = visit_stmt s0 in
      let new_s1, new_e = visit_exp e in

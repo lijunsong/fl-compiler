@@ -48,6 +48,10 @@ val fp : Temp.temp
     for the view-shift on different platforms. *)
 val rv : Temp.temp
 
+val caller_save : register list
+
+val callee_save : register list
+
 (** the bias info on Sparc. TODO: this info should not be exported
     from here if we are going to do multiple backends *)
 val bias : int

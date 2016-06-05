@@ -90,7 +90,7 @@ let relop_to_instr = function
 
 (** registers to which a call replaces its results *)
 let eax = Arch.temp_of_register "%eax"
-let call_write_regs = [eax]
+let call_write_regs = List.map Arch.temp_of_register Arch.caller_save
 let sp = Arch.temp_of_register "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
@@ -122,7 +122,8 @@ let rec munch_exp (exp : Ir.exp) : temp =
         (* Caveat 3: it is appealing to put eax as a dest reg
            here. But this t represents the result of the call, and
            will be used by others. So generate an extra call move
-           from eax to t. *)
+           from eax to t.
+        *)
         emit(OP("call " ^ (assembly_label_string l), [t], [], None));
         emit(MOVE("movl 's0, 'd0", Arch.rv, t)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n)))
