@@ -221,6 +221,15 @@ let relop op operand1 operand2 =
   let rand2 = unEx operand2 in
   Cx(fun t f -> Ir.CJUMP(op, rand1, rand2, t, f))
 
+let string_cmp op rand1 rand2 =
+  let cmp = Arch.external_call "stringEqual" [unEx rand1; unEx rand2] in
+  let cmpwith = match op with
+    | Ir.EQ -> Ir.CONST(1)
+    | Ir.NE -> Ir.CONST(0)
+    | _ -> failwith "type checker should only allows string cmp using EQ and NE"
+  in
+  Cx(fun t f -> Ir.CJUMP(op, cmp, cmpwith, t, f))
+
 let assign (lhs : exp) (rhs : exp) : exp =
   let l = unEx lhs in
   let r = unEx rhs in

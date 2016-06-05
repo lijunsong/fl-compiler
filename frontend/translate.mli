@@ -80,6 +80,9 @@ val binop : Ir.binop -> exp -> exp -> exp
 (** [relop op operand1 operand2] *)
 val relop : Ir.relop -> exp -> exp -> exp
 
+val string_cmp : Ir.relop -> exp -> exp -> exp
+(** [string_cmp op operand1 operand2] compare the contents of strings *)
+
 (** [assign lhs rhs] *)
 val assign : exp -> exp -> exp
 

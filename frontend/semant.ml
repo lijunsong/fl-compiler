@@ -330,13 +330,18 @@ and trans_exp (curr_level : Translate.level) (break_to : Temp.label option) (ten
                                   (ty_to_string left_ty) ^ " and " ^
                                   (ty_to_string right_ty)))
         | S.OpEq | S.OpNeq ->
-          let relop = trans_relop op in
-          if compatible_type left_ty right_ty then
-            Translate.relop relop l_ir r_ir, Types.INT
-          else
-            raise (TypeError(pos, "Operator applied to different types: " ^
-                                  (ty_to_string left_ty) ^ " and " ^
-                                  (ty_to_string right_ty)))
+          begin match left_ty, compatible_type left_ty right_ty with
+            | _, false ->
+              raise (TypeError(pos, "Operator applied to different types: " ^
+                                    (ty_to_string left_ty) ^ " and " ^
+                                    (ty_to_string right_ty)))
+            | STRING, true ->
+              let relop = trans_relop op in
+              Translate.string_cmp relop l_ir r_ir, Types.INT
+            | _, true ->
+              let relop = trans_relop op in
+              Translate.relop relop l_ir r_ir, Types.INT
+          end
       end
     | S.Assign (pos, var, e) ->
       let lhs_ir, left_ty = trvar var in
