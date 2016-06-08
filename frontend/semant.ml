@@ -194,7 +194,10 @@ let rec trans_decl (curr_level : Translate.level) (tenv : type_env)
   (** The main function translating decl list iteratively *)
   let rec trans_iter decls tenv venv inits =
     match decls with
-    | [] -> tenv, venv, inits
+    | [] ->
+      (* because we append initialize at the head of intis, to
+         preserve the declaration order, reverse it. *)
+      tenv, venv, List.rev inits
     | hd :: tl ->
       begin match hd with
         | S.VarDecl(pos, name, decl_ty, init) ->
