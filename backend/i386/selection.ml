@@ -90,26 +90,26 @@ let relop_to_instr = function
 
 (** registers to which a call replaces its results *)
 let eax = Arch.temp_of_register "%eax"
-let call_write_regs = List.map Arch.temp_of_register Arch.caller_save
+let caller_save_temps = List.map Arch.temp_of_register Arch.caller_save
 let sp = Arch.temp_of_register "%esp"
 
 let rec munch_exp (exp : Ir.exp) : temp =
   match exp with
   | Ir.CONST(i) ->
     result(fun t ->
-        OP("mov $" ^ (string_of_int i) ^ ", 'd0", [t], [], None)
+        OP("movl $" ^ (string_of_int i) ^ ", 'd0", [t], [], None)
         |> emit)
   | Ir.NAME(l) ->
     result(fun t ->
         let l_str = assembly_label_string l in
-        emit(OP(sprintf "mov $%s, 'd0" l_str, [t], [], None)))
+        emit(OP(sprintf "movl $%s, 'd0" l_str, [t], [], None)))
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
   | Ir.BINOP(op, e0, e1) ->
     let r0 = munch_exp e0 in
     let r1 = munch_exp e1 in
     result(fun t ->
-        emit(MOVE("mov 's0, 'd0", t, r0));
+        emit(MOVE("movl 's0, 'd0", t, r0));
         emit(OP(sprintf "%s 's0, 'd0" (binop_to_instr op), [t], [r1; t], None)))
   | Ir.CALL (Ir.NAME(l), args) ->
     (* Caveat: CALL could be external calls (like calls in runtime),
@@ -124,8 +124,8 @@ let rec munch_exp (exp : Ir.exp) : temp =
            will be used by others. So generate an extra call move
            from eax to t.
         *)
-        emit(OP("call " ^ (assembly_label_string l), [t], [], None));
-        emit(MOVE("movl 's0, 'd0", Arch.rv, t)))
+        emit(OP("call " ^ (assembly_label_string l), caller_save_temps, [], None));
+        emit(MOVE("movl 's0, 'd0", t, Arch.rv)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.TEMP(r), Ir.CONST(n)))
   | Ir.MEM (Ir.BINOP(Ir.PLUS, Ir.CONST(n), Ir.TEMP(r))) ->
     result (fun t -> emit(OP(sprintf "movl %d('s0), 'd0" n, [t], [r], None)))
@@ -146,10 +146,10 @@ let rec munch_exp (exp : Ir.exp) : temp =
 and munch_args args : unit =
   List.iteri (fun i arg -> match arg with
       | Ir.CONST(n) ->
-        emit(OP(sprintf "movl $%d, %d(%%esp)" n (i*4), [], [], None))
+        emit(OP(sprintf "movl $%d, %d(%%esp)" n (i*4), [], [sp], None))
       | e ->
         let t = munch_exp e in
-        emit(OP(sprintf "movl 's0, %d(%%esp)" (i*4), [], [t], None))
+        emit(OP(sprintf "movl 's0, %d(%%esp)" (i*4), [], [t; sp], None))
     ) args
 
 

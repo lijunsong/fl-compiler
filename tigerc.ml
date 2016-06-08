@@ -194,10 +194,17 @@ let to_regalloc () =
   match !program with
   | INSTR_SELECT (assems, str_frags) ->
     program := REGISTER_ALLOC(
-        List.map (fun (instrs, frame) ->
-            let instrs', alloc = Register_allocation.alloc instrs in
-            (instrs', frame), alloc) assems,
-        str_frags)
+        (List.map (fun (instrs, frame) ->
+             try
+               let instrs', alloc = Register_allocation.alloc instrs in
+               (instrs', frame), alloc
+             with
+             | Failure (msg) ->
+               print_endline msg;
+               raise (Failure (msg))
+             | e -> raise (e)
+           )
+            assems), str_frags)
   | _ -> failwith "Can't go back to previous compilation process."
 
 let to_flowgraph () =

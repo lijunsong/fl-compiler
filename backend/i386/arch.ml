@@ -48,8 +48,9 @@ let word_size = 4
 
 let registers = [
   "%eax"; "%ebx"; "%ecx"; "%edx"; "%esi"; "%edi";
-  "%ebp"; "%esp";
+  "%ebp"; "%esp"
 ]
+(** all registers that are available for register allocation *)
 
 (** registers that caller are responsible to save *)
 let caller_save = [
