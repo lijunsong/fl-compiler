@@ -10,16 +10,16 @@ let printer s : string =
 
 let assert_basic_block ir expected =
   (fun ctx ->
-     let result, _ = Canon.basic_blocks ir in
-     let result' = List.flatten result in
+     let result, _ = Basic_block.basic_blocks ir in
+     let result' = List.flatten (Basic_block.to_stmts result) in
      assert_equal ~cmp:ir_eq ~printer:printer
        expected result')
 
 let assert_trace ir expected =
   (fun ctx ->
      let result =
-       Canon.basic_blocks ir
-       |> Canon.trace_schedule in
+       Basic_block.basic_blocks ir
+       |> Trace.trace_schedule in
      assert_equal
        ~cmp:ir_eq
        ~printer:printer
@@ -30,8 +30,8 @@ let assert_trace ir expected =
 let assert_ir_neq ir expected =
   (fun ctx ->
      let result =
-       Canon.basic_blocks ir
-       |> Canon.trace_schedule in
+       Basic_block.basic_blocks ir
+       |> Trace.trace_schedule in
      assert_equal
        ~cmp:ir_eq
        ~printer:printer
@@ -106,7 +106,6 @@ let suite =
     (let t = Temp.new_label() in
      let f = Temp.new_label() in
      let fi = Temp.new_label() in
-     let exitl = Temp.new_label ~prefix:"exit" () in
      assert_trace
        [newl();
         CJUMP(EQ, CONST(1), CONST(2), t, f);
@@ -126,8 +125,7 @@ let suite =
         EXP(CONST(3));
         JUMP(NAME(fi), [fi]);
         LABEL(fi);
-        JUMP(NAME(exitl), [exitl]); (* jump to exit *)
-        LABEL(exitl) (* add exit label *)])
+       ])
      ;
 
     "Test trace: move label to closest jump" >::
@@ -137,22 +135,29 @@ let suite =
      let exitl = Temp.new_label ~prefix:"exit" () in
      assert_trace
        [newl();
+        EXP(CONST(2));
         JUMP(NAME(f), [f]);
-        LABEL(t); (* This block will be eliminated. *)
+
+        LABEL(t);
         EXP(CONST(3));
         JUMP(NAME(fi), [fi]);
-        LABEL(f);
-        EXP(CONST(4));
-        JUMP(NAME(fi), [fi]);
-        LABEL(fi);]
-       [newl();
-        JUMP(NAME(f), [f]);
+
         LABEL(f);
         EXP(CONST(4));
         JUMP(NAME(fi), [fi]);
         LABEL(fi);
-        JUMP(NAME(exitl), [exitl]); (* appended jump *)
-        LABEL(exitl) (* add exit label *)])
+        EXP(CONST(5));
+        JUMP(NAME(exitl), [exitl])
+       ]
+       [newl();
+        EXP(CONST(2));
+        LABEL(f);
+        EXP(CONST(4));
+        LABEL(fi);
+        EXP(CONST(5));
+        JUMP(NAME(exitl), [exitl]);
+        newl(); (* because trace generate exit label *)
+       ])
   ]
 
 

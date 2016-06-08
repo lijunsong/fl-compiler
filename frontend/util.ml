@@ -11,7 +11,7 @@ let file_to_string f =
 *)
 let split_last lst =
   let rec split part1 part2 = match part2 with
-    | [] -> failwith "empty list"
+    | [] -> failwith "split_last: empty list"
     | hd :: [] ->
       List.rev part1, hd
     | hd :: rest ->

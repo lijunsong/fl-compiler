@@ -17,11 +17,11 @@ let compile (content : string) : unit =
       | Arch.PROC(ir, fm) ->
         let instrs, alloc =
           Canon.linearize ir
-          |> Canon.basic_blocks
-          |> Canon.trace_schedule
+          |> Basic_block.basic_blocks
+          |> Trace.trace_schedule
           |> (fun ir ->
               let seq = Ir.seq ir in
-              Selection.codegen fm seq)
+              Selection.select_instr fm seq)
           |> Register_allocation.alloc in
         let get_register_name t =
           (* let it fail if it fails *)
@@ -36,12 +36,7 @@ let compile (content : string) : unit =
         ()
       | _ -> failwith "String fragment found in Proc fragments.")
       procs in
-  let data_frags = List.map (fun frag -> match frag with
-      | Arch.PROC(_) -> failwith "proc found in string frags."
-      | Arch.STRING(l, s) -> (l, s)) str_frags in
-  (* generate data *)
-  let data = Selection.codegen_data data_frags in
-  (ignore data)
+  ()
 
 let assert_pass (s : string) =
   let test ctx =
