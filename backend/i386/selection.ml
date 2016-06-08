@@ -90,6 +90,7 @@ let relop_to_instr = function
 
 (** registers to which a call replaces its results *)
 let eax = Arch.temp_of_register "%eax"
+let edx = Arch.temp_of_register "%edx"
 let caller_save_temps = List.map Arch.temp_of_register Arch.caller_save
 let sp = Arch.temp_of_register "%esp"
 
@@ -105,12 +106,21 @@ let rec munch_exp (exp : Ir.exp) : temp =
         emit(OP(sprintf "movl $%s, 'd0" l_str, [t], [], None)))
   | Ir.ESEQ (_) -> failwith "ESEQ: This is not canonical IR. Abort"
   | Ir.TEMP(t) -> t
-  | Ir.BINOP(op, e0, e1) ->
+  | Ir.BINOP(op, e0, e1) when op <> Ir.DIV ->
     let r0 = munch_exp e0 in
     let r1 = munch_exp e1 in
     result(fun t ->
         emit(MOVE("movl 's0, 'd0", t, r0));
         emit(OP(sprintf "%s 's0, 'd0" (binop_to_instr op), [t], [r1; t], None)))
+  | Ir.BINOP(op, e0, e1) when op = Ir.DIV ->
+    let r0 = munch_exp e0 in
+    let r1 = munch_exp e1 in
+    result(fun t ->
+        emit (MOVE("movl 's0, 'd0", eax, r0));
+        emit (OP("cdq", [eax;edx], [eax], None));
+        emit (OP("idiv 's0", [eax; edx], [r1], None));
+        emit (MOVE("movl 's0, 'd0", t, eax))
+      )
   | Ir.CALL (Ir.NAME(l), args) ->
     (* Caveat: CALL could be external calls (like calls in runtime),
        or user defined tiger function calls. Keep name as it is

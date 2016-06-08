@@ -77,8 +77,8 @@ val proc_entry_exit2 : frame -> Assem.instr list -> Assem.instr list
 (** genearte assembly prologue and epilogue. *)
 val add_prolog_epilog : frame -> string list -> string list
 
-(** dump frame information for debugging *)
-val debug_dump : frame -> unit
+(** debugging frame information *)
+val frame_to_string : frame -> string
 
 (** [string label str] generates data section for [str] which will
     be [label]ed *)

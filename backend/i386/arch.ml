@@ -215,9 +215,6 @@ let add_prolog_epilog f body =
 let external_call f args =
   Ir.CALL(Ir.NAME(Temp.named_label f), args)
 
-let debug_dump fm =
-  print_endline (frame_to_string fm)
-
 (** The implementation of string is interesting. If runtime.c
     defines the length as a long long, we need a xword instead of a
     word here. As currently runtime.c defines length as an int, we

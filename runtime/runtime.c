@@ -117,7 +117,7 @@ void assert(int i) {
     }
 }
 
-struct string *tiger_getchar()
+struct string *getchr()
 {int i=getc(stdin);
  if (i==EOF) return &empty;
  else return consts+i;

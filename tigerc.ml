@@ -52,20 +52,20 @@ let print_lang lang =
     print_string "programs:\n";
     List.iter (fun (ir_list, fm) ->
         print_ir_list ir_list;
-        print_string "frames: \n";
-        Arch.debug_dump fm) proc_list;
+        print_string ("frames: \n" ^
+                      (Arch.frame_to_string fm))) proc_list;
     print_string_frags strs
 
   | BLOCKS(bb_proc_list, label) ->
     List.iter (fun (bbs,l,fm) ->
-        Arch.debug_dump fm;
+        Arch.frame_to_string fm |> print_endline;
         Basic_block.basic_blocks_to_doc bbs |> Pprint.print_doc;
         print_string ("label: " ^ (Temp.label_to_string l) ^ "\n")
       ) bb_proc_list
   | TRACE(proc_list, strs) ->
     List.iter (fun (ir_list, fm) ->
         print_endline "----- frame -----";
-        Arch.debug_dump fm;
+        Arch.frame_to_string fm |> print_endline;
         print_ir_list ir_list;
         print_endline "----- frame end -----"
       ) proc_list;

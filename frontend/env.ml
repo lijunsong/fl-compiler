@@ -27,7 +27,7 @@ let prelude_val =
   [
     "print", [STRING], UNIT;
     "print_int", [INT], UNIT;
-    "getchar", [], STRING;
+    "getchr", [], STRING;
     "ord", [STRING], INT;
     "chr", [INT], STRING;
     "size", [STRING], INT;

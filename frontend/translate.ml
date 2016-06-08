@@ -43,6 +43,23 @@ type frag = Arch.frag
 
 let frag_to_string = Arch.frag_to_string
 
+let level_to_doc lev =
+  let open Pprint in
+  let rec to_doc l =
+  match l.parent with
+  | None -> 0, text (Arch.frame_to_string l.frame)
+  | Some (lev') ->
+    let ident, doc = to_doc lev' in
+    let ident' = ident + 4 in
+    let doc' = doc <->
+               nest ident'
+                 (line <-> text (Arch.frame_to_string l.frame)) in
+    ident', doc'
+  in
+  let _, doc = to_doc lev in
+  doc
+
+
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 
 (** uniq is for compare levels *)
@@ -120,6 +137,7 @@ let new_level ?add_static_link:(add=true) parent label formals : level =
     included.)*)
 let get_formals level : access list =
   let fm_formals = Arch.get_formals level.frame in
+  (*level_to_doc level |> Pprint.print_doc_endline;*)
   match List.map (fun f -> level, f) fm_formals with
   | [] -> failwith "A level's formals cannot be empty list"
   | hd :: tl -> tl
@@ -316,7 +334,7 @@ let rec get_enclosing_level_fp def_level use_level : exp =
 let call def_level use_level args : exp =
   let label = Arch.get_name def_level.frame in
   let args_ir = List.map (fun arg -> unEx arg) args in
-  if List.length (get_formals def_level) = List.length args_ir then
+  if List.length (Arch.get_formals def_level.frame) = List.length args_ir then
     (* This is a tiger function *)
     let sl_exp = get_enclosing_level_fp def_level use_level in
     Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
