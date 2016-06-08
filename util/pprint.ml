@@ -43,3 +43,6 @@ let rec layout = function
 
 let rec print_doc d =
   layout d |> print_string
+
+let rec print_doc_endline d =
+  layout d |> print_endline

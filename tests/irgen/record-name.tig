@@ -1,0 +1,17 @@
+/* This tests the order of var declaration initialization. */
+let 
+ type any = {any : int}
+
+ function modify (any : any) : int =
+     (any.any := 1; any.any)
+
+ function pass_arg () =
+    let var any := any {any = 0}
+        var i := modify(any)
+    in
+    assert(any.any = 1);
+    assert(i = 1)
+    end
+in
+  pass_arg()
+end

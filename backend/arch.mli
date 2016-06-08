@@ -18,14 +18,14 @@ val frag_to_string: frag -> string
 val registers: register list
 
 (** temporaries that already maps to machine registers *)
-val known_temp: register Temp.TempMap.t
+val temp_map: register Temp.TempMap.t
 
 (** given a name, return the register *)
-val get_temp : register -> Temp.temp
+val temp_of_register : register -> Temp.temp
 
 (** given a register, return its pre-defined name. If it has no
     predefined name, return None. *)
-val get_register_name : Temp.temp -> register option
+val register_of_temp : Temp.temp -> register option
 
 (** [new_frame name formals] create a frame named l. A list of
     bool indicates whether each formal argument escapes. *)
@@ -48,6 +48,10 @@ val fp : Temp.temp
     for the view-shift on different platforms. *)
 val rv : Temp.temp
 
+val caller_save : register list
+
+val callee_save : register list
+
 (** the bias info on Sparc. TODO: this info should not be exported
     from here if we are going to do multiple backends *)
 val bias : int
@@ -55,26 +59,26 @@ val bias : int
 (** the size of a word in a Frame *)
 val word_size : int
 
-(** [get_exp base access] given the base location of the access,
-    this function returns the IR representing that location's content *)
-val get_exp : Ir.exp -> access -> Ir.exp
+(** [get_access_exp base access] given an access and the base location
+    of the access, this function returns the IR representing that
+    location's content *)
+val get_access_exp : Ir.exp -> access -> Ir.exp
 
 (** [external_call f args] call external function f with args *)
 val external_call : string -> Ir.exp list -> Ir.exp
 
 (** implement view shift. Mainly called by Translate.proc_entry_exit *)
-val proc_entry_exit1 : frame -> Ir.stmt -> Ir.stmt
+val view_shift : frame -> Ir.stmt -> Ir.stmt
 
 (** after codegen, this function marks special registers for coloring.
  * This is called after codegen. *)
 val proc_entry_exit2 : frame -> Assem.instr list -> Assem.instr list
 
-(** genearte assembly prologue and epilogue, this is called after
- *  codegen. *)
-val proc_entry_exit3 : frame -> string list -> string list
+(** genearte assembly prologue and epilogue. *)
+val add_prolog_epilog : frame -> string list -> string list
 
-(** dump frame information for debugging *)
-val debug_dump : frame -> unit
+(** debugging frame information *)
+val frame_to_string : frame -> string
 
 (** [string label str] generates data section for [str] which will
     be [label]ed *)

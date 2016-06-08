@@ -43,6 +43,23 @@ type frag = Arch.frag
 
 let frag_to_string = Arch.frag_to_string
 
+let level_to_doc lev =
+  let open Pprint in
+  let rec to_doc l =
+  match l.parent with
+  | None -> 0, text (Arch.frame_to_string l.frame)
+  | Some (lev') ->
+    let ident, doc = to_doc lev' in
+    let ident' = ident + 4 in
+    let doc' = doc <->
+               nest ident'
+                 (line <-> text (Arch.frame_to_string l.frame)) in
+    ident', doc'
+  in
+  let _, doc = to_doc lev in
+  doc
+
+
 let compare (a : level) (b : level) = compare a.cmp b.cmp
 
 (** uniq is for compare levels *)
@@ -85,8 +102,12 @@ let unNx = function
       | _ -> Ir.EXP(e)
     end
   | Cx (genjump) ->
+    (* compare expression is used as a stmt. To preserve potential
+       side effect, place label after the stmt. *)
     let label_t, label_f = make_true_label(), make_false_label() in
-    genjump label_t label_f
+    Ir.SEQ(genjump label_t label_f,
+           Ir.SEQ(Ir.LABEL(label_f),
+                  Ir.LABEL(label_t)))
 
 (** To use an IR as a Cx, call this function *)
 let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
@@ -96,7 +117,7 @@ let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
   | Nx (e) -> failwith ("type checker failed on: " ^ (Ir.stmt_to_string e))
 
 let outermost = { parent = None;
-                  frame = Arch.new_frame (Temp.named_label "tigermain") [];
+                  frame = Arch.new_frame (Temp.named_label "tigermain") [true];
                   cmp = !uniq
                 }
 
@@ -120,6 +141,7 @@ let new_level ?add_static_link:(add=true) parent label formals : level =
     included.)*)
 let get_formals level : access list =
   let fm_formals = Arch.get_formals level.frame in
+  (*level_to_doc level |> Pprint.print_doc_endline;*)
   match List.map (fun f -> level, f) fm_formals with
   | [] -> failwith "A level's formals cannot be empty list"
   | hd :: tl -> tl
@@ -177,7 +199,7 @@ let simple_var (acc : access) (use_level : level) : exp =
      expression that describes fp from use_level to check_level. *)
   let rec get_var (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if check_level = def_level then
-      let ir = Arch.get_exp fp_exp fm_acc in
+      let ir = Arch.get_access_exp fp_exp fm_acc in
       ir
     else
       match check_level.parent with
@@ -186,7 +208,7 @@ let simple_var (acc : access) (use_level : level) : exp =
         (* get static link *)
         let sl : Arch.access = get_static_link check_level in
         (* follow up to find the def_level *)
-        let fp_exp' = Arch.get_exp fp_exp sl in
+        let fp_exp' = Arch.get_access_exp fp_exp sl in
         get_var parent fp_exp'
   in
   Ex(get_var use_level (Ir.TEMP(Arch.fp)))
@@ -220,6 +242,15 @@ let relop op operand1 operand2 =
   let rand1 = unEx operand1 in
   let rand2 = unEx operand2 in
   Cx(fun t f -> Ir.CJUMP(op, rand1, rand2, t, f))
+
+let string_cmp op rand1 rand2 =
+  let cmp = Arch.external_call "stringEqual" [unEx rand1; unEx rand2] in
+  let cmpwith = match op with
+    | Ir.EQ -> Ir.CONST(1)
+    | Ir.NE -> Ir.CONST(0)
+    | _ -> failwith "type checker should only allows string cmp using EQ and NE"
+  in
+  Cx(fun t f -> Ir.CJUMP(op, cmp, cmpwith, t, f))
 
 let assign (lhs : exp) (rhs : exp) : exp =
   let l = unEx lhs in
@@ -288,14 +319,14 @@ let rec get_enclosing_level_fp def_level use_level : exp =
   let rec get_fp (check_level : level) (fp_exp : Ir.exp) : Ir.exp =
     if def_level = check_level then
       let sl : Arch.access = get_static_link check_level in
-      Arch.get_exp fp_exp sl
+      Arch.get_access_exp fp_exp sl
     else
       match def_level.parent, check_level.parent with
       | Some (def_parent), _ when def_parent = check_level ->
         fp_exp
       | Some (def_parent), Some (check_parent) ->
         let sl : Arch.access = get_static_link check_level in
-        let fp_exp' = Arch.get_exp fp_exp sl in
+        let fp_exp' = Arch.get_access_exp fp_exp sl in
         get_fp  check_parent fp_exp'
       | _ -> failwith "static link not found"
   in
@@ -307,7 +338,8 @@ let rec get_enclosing_level_fp def_level use_level : exp =
 let call def_level use_level args : exp =
   let label = Arch.get_name def_level.frame in
   let args_ir = List.map (fun arg -> unEx arg) args in
-  if List.length (get_formals def_level) = List.length args_ir then
+  if (List.length (Arch.get_formals def_level.frame)) - 1
+     = List.length args_ir then
     (* This is a tiger function *)
     let sl_exp = get_enclosing_level_fp def_level use_level in
     Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
@@ -330,7 +362,7 @@ let record (fields : exp list) =
                 v)
       ) fields in
   let init_ir_stmt = Ir.seq init_ir_stmts in
-  let alloca = Ir.MOVE(temp, Arch.external_call "malloc" [Ir.CONST(Arch.word_size * n)]) in
+  let alloca = Ir.MOVE(temp, Arch.external_call "allocRecord" [Ir.CONST(Arch.word_size * n)]) in
   Ex(Ir.ESEQ(Ir.SEQ(alloca, init_ir_stmt),
              temp))
 
@@ -436,7 +468,7 @@ let proc_entry_exit ?(is_procedure=false) level fbody : unit =
     else
       Ir.MOVE(Ir.TEMP(Arch.rv), unEx fbody) in
   (* do view shift *)
-  let stmt = Arch.proc_entry_exit1 fm body in
+  let stmt = Arch.view_shift fm body in
   frag_list := Arch.PROC(stmt, fm) :: !frag_list
 
 let get_result () : frag list =

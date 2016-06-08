@@ -110,7 +110,7 @@ let instrs2graph instrs : flowgraph =
   List.iteri (fun idx (instr, node) ->
       connect idx instr node;
       if !Debug.debug then begin
-        let get_register_name t = match Arch.get_register_name t with
+        let get_register_name t = match Arch.register_of_temp t with
           | None -> Temp.temp_to_string t
           | Some (r) -> r
         in

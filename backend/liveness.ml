@@ -170,7 +170,8 @@ let add_edge (nodes0 : Node.t list) (nodes1 : Node.t list) : unit =
     | [] -> ()
     | src :: rest ->
       List.iter (fun dst ->
-          if not (src.Node.temp = dst.Node.temp) then begin
+          if not (src.Node.temp = dst.Node.temp) &&
+             not (NodeSet.mem src dst.Node.adj) then begin
             src.Node.adj <- NodeSet.add dst src.Node.adj;
             dst.Node.adj <- NodeSet.add src dst.Node.adj;
             increase_degree src;

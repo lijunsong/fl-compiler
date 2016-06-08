@@ -3,9 +3,7 @@ open Lexer
 open Parse
 open Pos
 open Utils
-open Sexplib
 module S = Syntax
-open Symbol
 open Batteries
 
 let to_sym = Symbol.of_string
@@ -15,7 +13,7 @@ let assert_parse (s : string) (expected : S.exp) =
   let test ctx =
     let ast' = Parse.parse_string s in
     assert_equal ~cmp:ast_equal expected ast'
-                 ~printer:(fun a -> Sexp.to_string (S.sexp_of_exp a))
+                 ~printer:(fun a -> S.exp_to_string a)
   in
   test
 

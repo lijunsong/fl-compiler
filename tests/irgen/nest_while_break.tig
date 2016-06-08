@@ -7,8 +7,7 @@ let var sum := 0 in
                  sum := sum + 2;
                  if sum > 10 then break
            ));
-           assert(sum = 11);
-           if sum > 12 then break
+           if sum > 14 then break
    );
-   assert(sum = 13)
+   assert(sum = 17)
 end

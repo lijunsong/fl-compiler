@@ -7,14 +7,13 @@ let
               function f():int =
                 a - b - c
           in
-          assert(f() = -3);
-          f()/* f() )pass current fp */
+          assert(f() = -3); /* f() )pass current fp */
+          f()
           end
     in
-    assert(bar() = -3);
-    bar() /* pass current fp */
+    assert(bar() = -3); /* pass current fp */
+    bar()
     end
 in
-  assert(foo() = -3);
-  foo() /* pass current fp */
+  assert(foo() = -3) /* pass current fp */
 end

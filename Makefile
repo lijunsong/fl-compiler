@@ -23,16 +23,21 @@ clean:
 tests:
 	for p in $(all_tests); do \
 	ocamlbuild -use-ocamlfind $${p%.ml}.byte; \
+	./$$(basename $${p%.ml}.byte); \
 	done
 
 testbuild: all
 	for t in $(cg_tests); do \
-	./$(TC).byte -load $$t -codegen1 -p > $${t%.tig}.s 2>/dev/null; \
+	./$(TC).byte -load $$t -codegen -p > $${t%.tig}.s 2>/dev/null; \
 	test $$? -eq 0 && echo "passed: $$t" || echo "failed: $$t"; \
 	done
 
 testcg:
+	passed=0; \
+	total=0; \
 	for t in $(cg_tests); do \
 	f=$${t%.tig}.out; \
-	gcc -o $$f $(BIT) runtime/runtime.c $${t%.tig}.s 2>/dev/null && ./$$f 2>/dev/null && test $$? -eq 0 && echo "passed: $$f" || echo "failed: $$f"; \
-	done
+	total=$$((total+1)); \
+	gcc -o $$f $(BIT) runtime/runtime.c $${t%.tig}.s 2>/dev/null && ./$$f 2>/dev/null && test $$? -eq 0 && passed=$$((passed+1)) && echo "passed: $$f" || echo "failed: $$f"; \
+	done; \
+	echo "passed: $$passed/$$total"

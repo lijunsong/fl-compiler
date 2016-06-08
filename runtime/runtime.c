@@ -37,6 +37,11 @@ void print(struct string *s)
  for(i=0;i<s->length;i++,p++) putchar(*p);
 }
 
+void print_int(int i)
+{
+    printf("%d", i);
+}
+
 void flush()
 {
  fflush(stdout);
@@ -112,7 +117,7 @@ void assert(int i) {
     }
 }
 
-struct string *tiger_getchar()
+struct string *getchr()
 {int i=getc(stdin);
  if (i==EOF) return &empty;
  else return consts+i;

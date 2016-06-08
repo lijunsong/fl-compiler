@@ -23,7 +23,11 @@ val named_label : string -> label
 (** Returns a new label whose assembly language name is the given
     string. This is useful for debugging *)
 
-module LabelMap : BatMap.S with type key = label
+module LabelMap : sig
+  include (Map.S with type key = label)
+  val find_opt : key -> 'a t -> 'a option
+  val of_list : (key * 'a) list -> 'a t
+end
 
 module TempSet : BatSet.S with type elt = temp
 
