@@ -1,7 +1,7 @@
 let  type x = {y : int}
      var a := x{y=0}
      function modify(arg : x) =
-         (arg.y = 100; ())
+         (arg.y := 100; ())
 in
      modify(a);
      assert(a.y = 100)

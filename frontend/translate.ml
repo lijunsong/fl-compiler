@@ -102,8 +102,12 @@ let unNx = function
       | _ -> Ir.EXP(e)
     end
   | Cx (genjump) ->
+    (* compare expression is used as a stmt. To preserve potential
+       side effect, place label after the stmt. *)
     let label_t, label_f = make_true_label(), make_false_label() in
-    genjump label_t label_f
+    Ir.SEQ(genjump label_t label_f,
+           Ir.SEQ(Ir.LABEL(label_f),
+                  Ir.LABEL(label_t)))
 
 (** To use an IR as a Cx, call this function *)
 let unCx e : Temp.label -> Temp.label -> Ir.stmt = match e with
