@@ -334,7 +334,8 @@ let rec get_enclosing_level_fp def_level use_level : exp =
 let call def_level use_level args : exp =
   let label = Arch.get_name def_level.frame in
   let args_ir = List.map (fun arg -> unEx arg) args in
-  if List.length (Arch.get_formals def_level.frame) = List.length args_ir then
+  if (List.length (Arch.get_formals def_level.frame)) - 1
+     = List.length args_ir then
     (* This is a tiger function *)
     let sl_exp = get_enclosing_level_fp def_level use_level in
     Ex(Ir.CALL(Ir.NAME(label), unEx sl_exp :: args_ir))
