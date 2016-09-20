@@ -1,8 +1,10 @@
-A Tiger Compiler in OCaml
-=========================
+Slim Compiler
+=============
 
-[todo]
-
+Slim Compiler serves as an infrastructure for studying compiler
+construction and programming language theory. The first reference
+structure of this project is taken from Tiger Book. It'll
+diverge eventually.
 
 TopLevel
 --------
